@@ -1,0 +1,111 @@
+<!-- Copyright (c) 2025 Internet2 -->
+<!-- Licensed under the Apache License, Version 2.0 - see LICENSE file for details -->
+
+<%
+const pageTitle = 'Federation Info';
+const page = 'federation';
+const body = `
+<div class="federation-page">
+    <h1>Federation Information</h1>
+
+    ${error ? `
+        <div class="alert alert-error">${error}</div>
+    ` : statement ? `
+        <div class="statement-card">
+            <h3>Federation Entity Statement</h3>
+            <p class="info-text">This is the signed JWT entity statement for this federation.</p>
+
+            <div class="statement-actions">
+                <a href="${apiUrl}/.well-known/openid-federation" target="_blank" class="btn btn-primary">
+                    View Raw Statement
+                </a>
+                <button onclick="copyStatement()" class="btn btn-secondary">Copy to Clipboard</button>
+            </div>
+
+            <div class="code-container">
+                <textarea id="statementText" readonly class="code-textarea">${statement}</textarea>
+            </div>
+        </div>
+
+        <div class="decoded-card">
+            <h3>Decoded Statement</h3>
+            <p class="info-text">JWT decoded (without signature verification)</p>
+
+            <div class="tabs">
+                <button class="tab-btn active" onclick="showTab('header')">Header</button>
+                <button class="tab-btn" onclick="showTab('payload')">Payload</button>
+            </div>
+
+            <div id="header-tab" class="tab-content active">
+                <pre class="code-block" id="headerContent">Loading...</pre>
+            </div>
+
+            <div id="payload-tab" class="tab-content">
+                <pre class="code-block" id="payloadContent">Loading...</pre>
+            </div>
+        </div>
+
+        <div class="info-card">
+            <h3>Federation Endpoints</h3>
+            <dl class="endpoint-list">
+                <dt>Entity Configuration:</dt>
+                <dd><code>${apiUrl}/.well-known/openid-federation</code></dd>
+
+                <dt>Fetch Endpoint:</dt>
+                <dd><code>${apiUrl}/fetch?sub=&lt;entity_id&gt;</code></dd>
+
+                <dt>List Endpoint:</dt>
+                <dd><code>${apiUrl}/list</code></dd>
+
+                <dt>Register Endpoint:</dt>
+                <dd><code>${apiUrl}/register</code></dd>
+            </dl>
+        </div>
+
+        <script>
+            // Decode JWT
+            function decodeJWT(token) {
+                try {
+                    const parts = token.split('.');
+                    if (parts.length !== 3) return null;
+
+                    const header = JSON.parse(atob(parts[0]));
+                    const payload = JSON.parse(atob(parts[1]));
+
+                    return { header, payload };
+                } catch (e) {
+                    console.error('Error decoding JWT:', e);
+                    return null;
+                }
+            }
+
+            const decoded = decodeJWT(\`${statement}\`);
+            if (decoded) {
+                document.getElementById('headerContent').textContent = JSON.stringify(decoded.header, null, 2);
+                document.getElementById('payloadContent').textContent = JSON.stringify(decoded.payload, null, 2);
+            } else {
+                document.getElementById('headerContent').textContent = 'Error decoding header';
+                document.getElementById('payloadContent').textContent = 'Error decoding payload';
+            }
+
+            function showTab(tabName) {
+                document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+                document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+
+                document.getElementById(tabName + '-tab').classList.add('active');
+                event.target.classList.add('active');
+            }
+
+            function copyStatement() {
+                const textarea = document.getElementById('statementText');
+                textarea.select();
+                document.execCommand('copy');
+                alert('Statement copied to clipboard!');
+            }
+        </script>
+    ` : ''}
+</div>
+`;
+%>
+
+<%- include('layout', { pageTitle, page, body }) %>

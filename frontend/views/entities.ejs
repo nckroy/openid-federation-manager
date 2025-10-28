@@ -1,0 +1,64 @@
+<!-- Copyright (c) 2025 Internet2 -->
+<!-- Licensed under the Apache License, Version 2.0 - see LICENSE file for details -->
+
+<%
+const pageTitle = 'Entities';
+const page = 'entities';
+const body = `
+<div class="entities-page">
+    <h1>Registered Entities</h1>
+
+    ${error ? `<div class="alert alert-error">${error}</div>` : ''}
+
+    <div class="filter-bar">
+        <div class="filter-buttons">
+            <a href="/entities" class="btn ${entityType === 'all' ? 'btn-primary' : 'btn-secondary'}">All</a>
+            <a href="/entities?type=OP" class="btn ${entityType === 'OP' ? 'btn-primary' : 'btn-secondary'}">OpenID Providers</a>
+            <a href="/entities?type=RP" class="btn ${entityType === 'RP' ? 'btn-primary' : 'btn-secondary'}">Relying Parties</a>
+        </div>
+        <a href="/register" class="btn btn-primary">Register New Entity</a>
+    </div>
+
+    ${entities.length === 0 ? `
+        <div class="empty-state">
+            <p>No ${entityType === 'all' ? '' : entityType + ' '}entities found.</p>
+            <a href="/register" class="btn btn-primary">Register Entity</a>
+        </div>
+    ` : `
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Entity ID</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>Registered</th>
+                        <th>Last Updated</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${entities.map(entity => `
+                        <tr>
+                            <td class="entity-id">
+                                <a href="/entity/${encodeURIComponent(entity.entity_id)}">${entity.entity_id}</a>
+                            </td>
+                            <td><span class="badge badge-${entity.entity_type.toLowerCase()}">${entity.entity_type}</span></td>
+                            <td><span class="status status-${entity.status}">${entity.status}</span></td>
+                            <td>${new Date(entity.registered_at).toLocaleString()}</td>
+                            <td>${new Date(entity.last_updated).toLocaleString()}</td>
+                            <td>
+                                <a href="/entity/${encodeURIComponent(entity.entity_id)}" class="btn-link">View Details</a>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+        <p class="entity-count">Showing ${entities.length} ${entityType === 'all' ? '' : entityType + ' '}${entities.length === 1 ? 'entity' : 'entities'}</p>
+    `}
+</div>
+`;
+%>
+
+<%- include('layout', { pageTitle, page, body }) %>

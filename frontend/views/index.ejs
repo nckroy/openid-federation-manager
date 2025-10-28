@@ -1,0 +1,88 @@
+<!-- Copyright (c) 2025 Internet2 -->
+<!-- Licensed under the Apache License, Version 2.0 - see LICENSE file for details -->
+
+<%
+const pageTitle = 'Dashboard';
+const page = 'home';
+const body = `
+<div class="dashboard">
+    <h1>Federation Dashboard</h1>
+
+    ${error ? `<div class="alert alert-error">${error}</div>` : ''}
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <h3>Total Entities</h3>
+            <div class="stat-number">${entities.length}</div>
+        </div>
+        <div class="stat-card">
+            <h3>OpenID Providers</h3>
+            <div class="stat-number">${entities.filter(e => e.entity_type === 'OP').length}</div>
+        </div>
+        <div class="stat-card">
+            <h3>Relying Parties</h3>
+            <div class="stat-number">${entities.filter(e => e.entity_type === 'RP').length}</div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-header">
+            <h2>Recent Entities</h2>
+            <a href="/entities" class="btn btn-secondary">View All</a>
+        </div>
+
+        ${entities.length === 0 ? `
+            <div class="empty-state">
+                <p>No entities registered yet.</p>
+                <a href="/register" class="btn btn-primary">Register First Entity</a>
+            </div>
+        ` : `
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Entity ID</th>
+                            <th>Type</th>
+                            <th>Status</th>
+                            <th>Registered</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${entities.slice(0, 5).map(entity => `
+                            <tr>
+                                <td class="entity-id"><a href="/entity/${encodeURIComponent(entity.entity_id)}">${entity.entity_id}</a></td>
+                                <td><span class="badge badge-${entity.entity_type.toLowerCase()}">${entity.entity_type}</span></td>
+                                <td><span class="status status-${entity.status}">${entity.status}</span></td>
+                                <td>${new Date(entity.registered_at).toLocaleDateString()}</td>
+                                <td><a href="/entity/${encodeURIComponent(entity.entity_id)}" class="btn-link">View Details</a></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `}
+    </div>
+
+    <div class="quick-actions">
+        <h2>Quick Actions</h2>
+        <div class="action-grid">
+            <a href="/register" class="action-card">
+                <h3>Register Entity</h3>
+                <p>Add a new OpenID Provider or Relying Party to the federation</p>
+            </a>
+            <a href="/entities" class="action-card">
+                <h3>Browse Entities</h3>
+                <p>View and manage all registered entities</p>
+            </a>
+            <a href="/federation" class="action-card">
+                <h3>Federation Info</h3>
+                <p>View federation entity statement and configuration</p>
+            </a>
+        </div>
+    </div>
+</div>
+`;
+%>
+
+<%- include('layout', { pageTitle, page, body }) %>

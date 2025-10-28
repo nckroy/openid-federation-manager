@@ -1,0 +1,76 @@
+<!-- Copyright (c) 2025 Internet2 -->
+<!-- Licensed under the Apache License, Version 2.0 - see LICENSE file for details -->
+
+<%
+const pageTitle = 'Register Entity';
+const page = 'register';
+const body = `
+<div class="register-page">
+    <h1>Register New Entity</h1>
+
+    ${error ? `<div class="alert alert-error">${error}</div>` : ''}
+    ${success ? `<div class="alert alert-success">${success}</div>` : ''}
+
+    <div class="form-card">
+        <form action="/register" method="POST" class="register-form">
+            <div class="form-group">
+                <label for="entity_id">Entity ID *</label>
+                <input
+                    type="url"
+                    id="entity_id"
+                    name="entity_id"
+                    placeholder="https://example.com"
+                    required
+                    value="${typeof formData !== 'undefined' ? formData.entity_id || '' : ''}"
+                >
+                <small class="form-help">Full HTTPS URL of the entity (must have /.well-known/openid-federation endpoint)</small>
+            </div>
+
+            <div class="form-group">
+                <label for="entity_type">Entity Type *</label>
+                <select id="entity_type" name="entity_type" required>
+                    <option value="">Select type...</option>
+                    <option value="OP" ${typeof formData !== 'undefined' && formData.entity_type === 'OP' ? 'selected' : ''}>OpenID Provider (OP)</option>
+                    <option value="RP" ${typeof formData !== 'undefined' && formData.entity_type === 'RP' ? 'selected' : ''}>Relying Party (RP)</option>
+                </select>
+                <small class="form-help">OP = OpenID Provider, RP = Relying Party</small>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Register Entity</button>
+                <a href="/entities" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+
+    ${typeof result !== 'undefined' && result ? `
+        <div class="result-card">
+            <h3>Registration Result</h3>
+            <dl class="result-details">
+                <dt>Status:</dt>
+                <dd><span class="badge badge-success">${result.status}</span></dd>
+
+                <dt>Entity ID:</dt>
+                <dd class="entity-id">${result.entity_id}</dd>
+
+                <dt>Fetch Endpoint:</dt>
+                <dd><code>${result.fetch_endpoint}</code></dd>
+            </dl>
+            <a href="/entity/${encodeURIComponent(result.entity_id)}" class="btn btn-primary">View Entity Details</a>
+        </div>
+    ` : ''}
+
+    <div class="info-card">
+        <h3>Registration Requirements</h3>
+        <ul>
+            <li>Entity must have a valid <code>/.well-known/openid-federation</code> endpoint</li>
+            <li>Entity ID must be a full HTTPS URL</li>
+            <li>Entity statement must be a valid JWT</li>
+            <li>Entity must not already be registered in this federation</li>
+        </ul>
+    </div>
+</div>
+`;
+%>
+
+<%- include('layout', { pageTitle, page, body }) %>

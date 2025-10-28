@@ -1,0 +1,76 @@
+<!-- Copyright (c) 2025 Internet2 -->
+<!-- Licensed under the Apache License, Version 2.0 - see LICENSE file for details -->
+
+<%
+const pageTitle = entity ? 'Entity Details' : 'Error';
+const page = 'entities';
+const body = `
+<div class="entity-details-page">
+    ${error ? `
+        <div class="alert alert-error">${error}</div>
+        <a href="/entities" class="btn btn-secondary">Back to Entities</a>
+    ` : entity ? `
+        <div class="page-header">
+            <h1>Entity Details</h1>
+            <a href="/entities" class="btn btn-secondary">Back to Entities</a>
+        </div>
+
+        <div class="entity-info-card">
+            <div class="entity-header">
+                <h2>${entity.entity_id}</h2>
+                <span class="badge badge-${entity.entity_type.toLowerCase()}">${entity.entity_type}</span>
+            </div>
+
+            <dl class="details-grid">
+                <dt>Status:</dt>
+                <dd><span class="status status-${entity.status}">${entity.status}</span></dd>
+
+                <dt>Registered:</dt>
+                <dd>${new Date(entity.registered_at).toLocaleString()}</dd>
+
+                <dt>Last Updated:</dt>
+                <dd>${new Date(entity.last_updated).toLocaleString()}</dd>
+
+                <dt>Entity Type:</dt>
+                <dd>${entity.entity_type === 'OP' ? 'OpenID Provider' : 'Relying Party'}</dd>
+            </dl>
+        </div>
+
+        ${entity.metadata ? `
+            <div class="metadata-card">
+                <h3>Metadata</h3>
+                <pre class="code-block">${JSON.stringify(JSON.parse(entity.metadata), null, 2)}</pre>
+            </div>
+        ` : ''}
+
+        ${entity.jwks ? `
+            <div class="jwks-card">
+                <h3>JSON Web Key Set (JWKS)</h3>
+                <pre class="code-block">${JSON.stringify(JSON.parse(entity.jwks), null, 2)}</pre>
+            </div>
+        ` : ''}
+
+        ${entity.authority_hints ? `
+            <div class="authority-card">
+                <h3>Authority Hints</h3>
+                <pre class="code-block">${JSON.stringify(JSON.parse(entity.authority_hints), null, 2)}</pre>
+            </div>
+        ` : ''}
+
+        <div class="actions-card">
+            <h3>Actions</h3>
+            <div class="action-buttons">
+                <a href="${apiUrl}/fetch?sub=${encodeURIComponent(entity.entity_id)}" target="_blank" class="btn btn-primary">
+                    View Subordinate Statement (JWT)
+                </a>
+                <a href="${entity.entity_id}/.well-known/openid-federation" target="_blank" class="btn btn-secondary">
+                    View Entity Statement
+                </a>
+            </div>
+        </div>
+    ` : ''}
+</div>
+`;
+%>
+
+<%- include('layout', { pageTitle, page, body }) %>

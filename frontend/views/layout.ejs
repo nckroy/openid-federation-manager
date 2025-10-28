@@ -1,0 +1,42 @@
+<!-- Copyright (c) 2025 Internet2 -->
+<!-- Licensed under the Apache License, Version 2.0 - see LICENSE file for details -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= typeof pageTitle !== 'undefined' ? pageTitle + ' - ' : '' %><%= federationName %></title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <h1><%= federationName %></h1>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="/" class="<%= typeof page !== 'undefined' && page === 'home' ? 'active' : '' %>">Dashboard</a></li>
+                <li><a href="/entities" class="<%= typeof page !== 'undefined' && page === 'entities' ? 'active' : '' %>">Entities</a></li>
+                <li><a href="/register" class="<%= typeof page !== 'undefined' && page === 'register' ? 'active' : '' %>">Register Entity</a></li>
+                <li><a href="/federation" class="<%= typeof page !== 'undefined' && page === 'federation' ? 'active' : '' %>">Federation Info</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <div class="container">
+            <%- body %>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 Internet2. Licensed under Apache License 2.0.</p>
+            <p>Backend API: <%= apiUrl %></p>
+        </div>
+    </footer>
+
+    <script src="/js/main.js"></script>
+</body>
+</html>
