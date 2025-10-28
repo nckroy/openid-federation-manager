@@ -1,3 +1,6 @@
+# Copyright (c) 2025 Internet2
+# Licensed under the MIT License - see LICENSE file for details
+
 import os
 
 class Config:

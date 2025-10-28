@@ -1,3 +1,6 @@
+# Copyright (c) 2025 Internet2
+# Licensed under the MIT License - see LICENSE file for details
+
 from flask import Flask, request, jsonify, Response
 import sys
 import os
