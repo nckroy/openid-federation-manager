@@ -128,6 +128,18 @@ The implementation uses:
 
 Keys are persisted in the `signing_keys` table and automatically loaded on startup. The application reuses existing keys across restarts.
 
+#### Key API Signatures
+
+**FederationManager methods:**
+- `generate_signing_key()` → `(private_key, public_key, private_pem, public_pem)` - Returns 4 values: key objects and PEM strings
+- `get_or_create_signing_key()` → `(private_key, public_key)` - Returns 2 values: key objects only
+- `get_jwks()` → `Dict` - Returns JWKS with 'keys' array
+- `register_entity(entity_id, entity_type, metadata, jwks)` → `bool` - Returns success status
+- `get_entity(entity_id)` → `Optional[Dict]` - Returns entity dict or None
+- `list_entities(entity_type=None)` → `List[str]` - Returns list of entity IDs
+- `store_entity_statement(entity_id, issuer, subject, statement, expires_at)` → `None`
+- `get_entity_statement(subject)` → `Optional[str]` - Returns JWT string or None if not found/expired
+
 ## API Endpoints
 
 - `GET /.well-known/openid-federation` - Federation entity statement (JWT)
@@ -148,6 +160,9 @@ All endpoints return appropriate HTTP status codes and JSON error messages on fa
 - The federation automatically fetches and validates entity statements during registration
 - Database schema is auto-created on first run using `CREATE TABLE IF NOT EXISTS`
 - The application runs in debug mode by default when executed directly
+- Entity statements expire based on SQLite datetime comparison with `datetime('now')`
+- Keys must be stored as PEM-formatted strings in the database
+- JWKS format uses Base64url encoding without padding for 'n' and 'e' parameters
 
 ### File Organization
 
@@ -162,6 +177,8 @@ All endpoints return appropriate HTTP status codes and JSON error messages on fa
 1. **Port 5000 in use**: macOS AirPlay uses port 5000 by default. Use `API_PORT=5001` or disable AirPlay Receiver.
 2. **Module not found errors**: Ensure you're running from the project root directory, not from `backend/python/`.
 3. **Database already exists error**: Fixed in current version - schema uses `IF NOT EXISTS` clauses.
+4. **Tests must run from project root**: Backend tests expect to be run from project root to access `database/schema.sql`.
+5. **Shared test database**: Tests may share database state; use isolation or cleanup between test runs if needed.
 
 ### Testing Endpoints
 

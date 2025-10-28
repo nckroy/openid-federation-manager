@@ -36,25 +36,24 @@ tests/
 
 ### Backend Unit Tests
 
+**Important:** All backend tests must be run from the project root directory.
+
 Test the FederationManager class:
 
 ```bash
-cd tests/backend
-python3 -m pytest test_federation_manager.py -v
+python3 -m pytest tests/backend/test_federation_manager.py -v
 ```
 
 Test the Flask API:
 
 ```bash
-cd tests/backend
-python3 -m pytest test_api.py -v
+python3 -m pytest tests/backend/test_api.py -v
 ```
 
 Run all backend tests:
 
 ```bash
-cd tests/backend
-python3 -m pytest . -v
+python3 -m pytest tests/backend/ -v
 ```
 
 ### Frontend Tests
@@ -107,13 +106,13 @@ docker-compose -f docker-compose.test.yml up --build --abort-on-container-exit
 
 ### Backend Tests (`test_federation_manager.py`)
 
-- ✅ RSA key pair generation
-- ✅ Signing key storage and retrieval
+- ✅ RSA key pair generation (4-value return: private_key, public_key, private_pem, public_pem)
+- ✅ Signing key storage and retrieval (PEM format in database)
 - ✅ Entity registration
 - ✅ Duplicate entity detection
-- ✅ Entity listing and filtering
-- ✅ Entity statement storage
-- ✅ JWKS generation
+- ✅ Entity listing and filtering (by entity_type)
+- ✅ Entity statement storage with expiry
+- ✅ JWKS generation (Base64url encoding without padding)
 
 ### API Tests (`test_api.py`)
 
@@ -222,9 +221,9 @@ jobs:
 
 ### Backend Tests Failing
 
-- Ensure you're running from the project root
-- Check that the database schema file exists at `database/schema.sql`
-- Verify all Python dependencies are installed
+- **Must run from project root**: Tests expect `database/schema.sql` to be accessible
+- Verify all Python dependencies are installed: `pip install -r tests/requirements.txt`
+- Check that temporary directories can be created (tests use `tempfile.mkdtemp()`)
 
 ### Frontend Tests Failing
 

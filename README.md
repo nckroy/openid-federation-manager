@@ -210,15 +210,17 @@ Entity statements are JWTs signed with RS256 containing:
 - **authority_hints**: Array of superior entities in federation hierarchy
 - **trust_marks**: Optional trust marks (future enhancement)
 
-Statements have a 24-hour validity period (configurable).
+Statements have a 24-hour validity period (configurable via `STATEMENT_LIFETIME`). Statement expiration is checked using SQLite's `datetime('now')` comparison.
 
 ## Security Considerations
 
 - RSA-2048 keys are automatically generated on first run
-- Private keys are stored in the SQLite database
+- Private keys are stored as PEM-encoded strings in the SQLite database
 - The `.env` file and `*.db` files are excluded from version control
 - Entity statements are cryptographically signed using RS256
 - All entity IDs must be valid HTTPS URLs
+- JWKS public keys use Base64url encoding without padding
+- Keys are reused across application restarts for consistency
 
 ## Development
 
@@ -276,13 +278,15 @@ The project includes comprehensive test suites for backend, frontend, and end-to
 # Install test dependencies
 pip install -r tests/requirements.txt
 
-# Run all backend tests
-cd tests/backend
-python -m pytest . -v
+# Run all backend tests (from project root)
+python3 -m pytest tests/backend/ -v
 
 # Run specific test file
-python -m pytest test_federation_manager.py -v
+python3 -m pytest tests/backend/test_federation_manager.py -v
+python3 -m pytest tests/backend/test_api.py -v
 ```
+
+**Note:** Backend tests must be run from the project root directory to correctly access `database/schema.sql`.
 
 ### Running Frontend Tests
 
@@ -330,7 +334,7 @@ API_PORT=5001 python3 backend/python/app.py
 
 ### Database Already Exists
 
-The application safely handles existing databases and will reuse existing signing keys.
+The application safely handles existing databases and will reuse existing signing keys. All schema operations use `CREATE TABLE IF NOT EXISTS` and `CREATE INDEX IF NOT EXISTS` for idempotency.
 
 ### Entity Statement Fetch Failures
 
