@@ -1,0 +1,57 @@
+# Copyright (c) 2025 Internet2
+# Licensed under the Apache License, Version 2.0 - see LICENSE file for details
+
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ../..
+      dockerfile: tests/integration/Dockerfile.backend
+    ports:
+      - "5555:5000"
+    environment:
+      - API_PORT=5000
+      - API_HOST=0.0.0.0
+      - DATABASE_PATH=/tmp/test_federation.db
+      - FEDERATION_ENTITY_ID=https://test-federation.example.com
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+
+  frontend:
+    build:
+      context: ../..
+      dockerfile: tests/integration/Dockerfile.frontend
+    ports:
+      - "3333:3000"
+    environment:
+      - PORT=3000
+      - API_URL=http://backend:5000
+      - FEDERATION_NAME=Test Federation
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+
+  test-runner:
+    build:
+      context: ../..
+      dockerfile: tests/integration/Dockerfile.test
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    environment:
+      - BACKEND_URL=http://backend:5000
+      - FRONTEND_URL=http://frontend:3000
+    volumes:
+      - ../../tests:/tests
+    command: python3 -m pytest /tests/integration/test_full_stack.py -v

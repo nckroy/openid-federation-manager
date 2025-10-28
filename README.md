@@ -266,6 +266,55 @@ This implementation follows the [OpenID Federation 1.0 - draft 44](https://openi
 - **Subordinate Statement**: A statement issued by a superior entity (this federation) about a subordinate entity
 - **Trust Chain**: A chain of entity statements establishing trust from a trust anchor
 
+## Testing
+
+The project includes comprehensive test suites for backend, frontend, and end-to-end integration testing.
+
+### Running Backend Tests
+
+```bash
+# Install test dependencies
+pip install -r tests/requirements.txt
+
+# Run all backend tests
+cd tests/backend
+python -m pytest . -v
+
+# Run specific test file
+python -m pytest test_federation_manager.py -v
+```
+
+### Running Frontend Tests
+
+```bash
+# Install test dependencies
+cd tests/frontend
+npm install
+
+# Run frontend tests
+npm test
+```
+
+### Running Integration Tests
+
+Integration tests verify the full stack (backend + frontend) works together:
+
+```bash
+# Manual method (start services first)
+# Terminal 1: Start backend on port 5555
+API_PORT=5555 python3 backend/python/app.py
+
+# Terminal 2: Start frontend on port 3333
+cd frontend
+PORT=3333 API_URL=http://127.0.0.1:5555 npm start
+
+# Terminal 3: Run integration tests
+cd tests/integration
+python3 test_full_stack.py
+```
+
+See `tests/README.md` for complete testing documentation.
+
 ## Troubleshooting
 
 ### Port Already in Use

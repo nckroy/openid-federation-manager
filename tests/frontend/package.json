@@ -1,0 +1,16 @@
+{
+  "name": "frontend-tests",
+  "version": "1.0.0",
+  "description": "Frontend tests for OpenID Federation Manager UI",
+  "scripts": {
+    "test": "mocha test_server.js --timeout 5000"
+  },
+  "author": "Internet2",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "mocha": "^10.2.0",
+    "chai": "^4.3.10",
+    "chai-http": "^4.4.0",
+    "nock": "^13.4.0"
+  }
+}
