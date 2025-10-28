@@ -47,6 +47,29 @@ SQLite database (`database/schema.sql`) with four main tables:
 
 ### Setup and Run
 
+#### Using Development Container (Recommended)
+
+The project includes a Docker-based development container for VS Code:
+
+1. Open project in VS Code
+2. Press `F1` → "Dev Containers: Reopen in Container"
+3. Wait for container build and dependency installation
+4. Run the application:
+   ```bash
+   python3 backend/python/app.py
+   ```
+
+**Features:**
+- Python 3.11 pre-installed
+- All dependencies auto-installed
+- Ports 5000 and 5001 auto-forwarded
+- Persistent bash history
+- VS Code extensions (Pylance, Black, Flake8)
+
+See `.devcontainer/README.md` for detailed information.
+
+#### Local Installation
+
 ```bash
 # Install dependencies
 cd backend/python
@@ -132,6 +155,7 @@ All endpoints return appropriate HTTP status codes and JSON error messages on fa
 - Database file (`*.db`) is excluded from git
 - Environment file (`.env`) is excluded from git
 - The project uses relative paths from project root
+- `.devcontainer/` directory contains Docker development container configuration
 
 ### Common Issues
 
@@ -164,6 +188,37 @@ curl http://localhost:5000/list
 - Docstrings on all public methods
 - Error handling with try/except blocks
 - Configuration via environment variables preferred over hardcoding
+
+## Development Environment
+
+### Using the Devcontainer
+
+The project includes a complete Docker-based development environment:
+
+**Configuration Files:**
+- `.devcontainer/devcontainer.json` - VS Code dev container configuration
+- `.devcontainer/Dockerfile` - Container image definition
+- `.devcontainer/docker-compose.yml` - Container orchestration
+- `.devcontainer/README.md` - Detailed devcontainer documentation
+
+**What's Included:**
+- Python 3.11 with all project dependencies
+- Git, SQLite3, and build tools
+- VS Code extensions for Python development
+- Pre-configured environment variables
+- Automatic port forwarding
+- Persistent bash history
+
+**When to Use:**
+- Recommended for all new developers
+- Ensures consistent environment across platforms
+- No local Python/dependency management needed
+- Faster onboarding
+
+**When Not to Use:**
+- If Docker Desktop is not available
+- If you prefer managing Python environments locally
+- For production deployments (use local installation)
 
 ## Repository Information
 
