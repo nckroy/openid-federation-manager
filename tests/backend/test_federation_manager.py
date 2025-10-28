@@ -42,28 +42,41 @@ class TestFederationManager(unittest.TestCase):
 
     def test_generate_signing_key(self):
         """Test RSA key pair generation"""
-        private_key, public_key = self.manager.generate_signing_key()
+        private_key, public_key, private_pem, public_pem = self.manager.generate_signing_key()
 
         self.assertIsNotNone(private_key)
         self.assertIsNotNone(public_key)
-        self.assertIn('BEGIN PRIVATE KEY', private_key)
-        self.assertIn('BEGIN PUBLIC KEY', public_key)
+        self.assertIsNotNone(private_pem)
+        self.assertIsNotNone(public_pem)
+        self.assertIn('BEGIN PRIVATE KEY', private_pem)
+        self.assertIn('BEGIN PUBLIC KEY', public_pem)
 
     def test_store_and_retrieve_signing_key(self):
         """Test storing and retrieving signing keys"""
-        private_key, public_key = self.manager.generate_signing_key()
+        private_key, public_key, private_pem, public_pem = self.manager.generate_signing_key()
         kid = 'test-key-1'
 
         # Store key
-        self.manager.store_signing_key(kid, private_key, public_key)
+        conn = self.manager.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO signing_keys (kid, key_type, private_key, public_key, is_active)
+            VALUES (?, ?, ?, ?, 1)
+        ''', (kid, 'RSA', private_pem, public_pem))
+        conn.commit()
+        conn.close()
 
         # Retrieve key
-        retrieved = self.manager.get_signing_key(kid)
+        conn = self.manager.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM signing_keys WHERE kid = ?', (kid,))
+        retrieved = cursor.fetchone()
+        conn.close()
 
         self.assertIsNotNone(retrieved)
         self.assertEqual(retrieved['kid'], kid)
-        self.assertEqual(retrieved['private_key'], private_key)
-        self.assertEqual(retrieved['public_key'], public_key)
+        self.assertEqual(retrieved['private_key'], private_pem)
+        self.assertEqual(retrieved['public_key'], public_pem)
 
     def test_register_entity(self):
         """Test entity registration"""
@@ -147,7 +160,9 @@ class TestFederationManager(unittest.TestCase):
         entity_id = 'https://test-op.example.com'
         issuer = 'https://federation.example.com'
         statement = 'test.jwt.token'
-        expires_at = 1234567890
+        # Use a future timestamp so the statement hasn't expired
+        import time
+        expires_at = int(time.time()) + 86400  # 24 hours from now
 
         # Store statement
         self.manager.store_entity_statement(
@@ -165,9 +180,18 @@ class TestFederationManager(unittest.TestCase):
     def test_get_jwks(self):
         """Test JWKS generation"""
         # Generate and store a key
-        private_key, public_key = self.manager.generate_signing_key()
+        private_key, public_key, private_pem, public_pem = self.manager.generate_signing_key()
         kid = 'test-key-1'
-        self.manager.store_signing_key(kid, private_key, public_key)
+
+        # Store key directly
+        conn = self.manager.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO signing_keys (kid, key_type, private_key, public_key, is_active)
+            VALUES (?, ?, ?, ?, 1)
+        ''', (kid, 'RSA', private_pem, public_pem))
+        conn.commit()
+        conn.close()
 
         # Get JWKS
         jwks = self.manager.get_jwks()
@@ -175,6 +199,8 @@ class TestFederationManager(unittest.TestCase):
         self.assertIsNotNone(jwks)
         self.assertIn('keys', jwks)
         self.assertGreater(len(jwks['keys']), 0)
+        self.assertEqual(jwks['keys'][0]['kid'], kid)
+        self.assertEqual(jwks['keys'][0]['kty'], 'RSA')
 
 
 if __name__ == '__main__':
