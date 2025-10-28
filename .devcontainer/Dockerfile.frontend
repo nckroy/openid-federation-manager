@@ -1,0 +1,47 @@
+# Copyright (c) 2025 Internet2
+# Licensed under the Apache License, Version 2.0 - see LICENSE file for details
+
+FROM node:18-slim
+
+# Install system dependencies
+RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
+    && apt-get -y install --no-install-recommends \
+        git \
+        curl \
+        ca-certificates \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create a non-root user
+ARG USERNAME=vscode
+ARG USER_UID=1000
+ARG USER_GID=$USER_UID
+
+RUN groupadd --gid $USER_GID $USERNAME \
+    && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME \
+    && apt-get update \
+    && apt-get install -y sudo \
+    && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
+    && chmod 0440 /etc/sudoers.d/$USERNAME
+
+# Set the working directory
+WORKDIR /workspace
+
+# Copy frontend package files
+COPY frontend/package*.json /workspace/frontend/
+
+# Change to frontend directory and install dependencies
+WORKDIR /workspace/frontend
+RUN npm install
+
+# Return to workspace root
+WORKDIR /workspace
+
+# Switch to non-root user
+USER $USERNAME
+
+# Expose frontend port
+EXPOSE 3000
+
+# Default command (will be overridden by docker-compose)
+CMD ["npm", "start", "--prefix", "frontend"]

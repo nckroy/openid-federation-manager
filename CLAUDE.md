@@ -11,14 +11,21 @@ OpenID Federation Manager is a Python/Flask application implementing OpenID Fede
 
 ## Architecture
 
-### Backend Components
+### Full-Stack Application
 
-The Python/Flask backend implements the following architecture:
+The application consists of two main components:
 
+**Backend (Python/Flask):**
 - **FederationManager** (`backend/python/federation_manager.py`): Core federation logic handling entity registration, database operations, and cryptographic key management
 - **EntityStatementManager** (`backend/python/entity_statement.py`): Creates and verifies JWT-based entity statements, fetches statements from remote entities
 - **Main Application** (`backend/python/app.py`): HTTP API server exposing federation endpoints
 - **Configuration** (`config/config.py`): Centralized configuration management with environment variable support
+
+**Frontend (Node.js/Express):**
+- **Express Server** (`frontend/server.js`): Web UI server that proxies requests to the backend API
+- **EJS Templates** (`frontend/views/`): Server-side rendered HTML pages
+- **Static Assets** (`frontend/public/`): CSS and client-side JavaScript
+- **Pages**: Dashboard, entity list, registration form, entity details, federation info
 
 ### Database Layer
 
@@ -49,29 +56,47 @@ SQLite database (`database/schema.sql`) with four main tables:
 
 #### Using Development Container (Recommended)
 
-The project includes a Docker-based development container for VS Code:
+The project includes a Docker Compose-based multi-service development environment:
 
 1. Open project in VS Code
 2. Press `F1` → "Dev Containers: Reopen in Container"
-3. Wait for container build and dependency installation
-4. Run the application:
+3. Wait for all containers to build and dependencies to install
+4. Run the services:
    ```bash
+   # Start backend (from app container terminal)
    python3 backend/python/app.py
+
+   # Start frontend (in a separate terminal)
+   cd frontend && npm start
    ```
 
+**Multi-Service Architecture:**
+- **Backend Container**: Python 3.11 with Flask API (ports 5000, 5001)
+- **Frontend Container**: Node.js 18 with Express UI (port 3000)
+- **App Container**: Main development workspace with both Python and Node.js tools
+- All services connected via Docker network for inter-service communication
+- Health checks ensure services start in correct order
+
 **Features:**
-- Python 3.11 pre-installed
-- All dependencies auto-installed
-- Ports 5000 and 5001 auto-forwarded
+- Python 3.11 and Node.js 18 pre-installed
+- All dependencies auto-installed (Python + Node.js)
+- Ports 3000, 5000, and 5001 auto-forwarded
 - Persistent bash history
+- Node modules cached for performance
 - VS Code extensions (Pylance, Black, Flake8)
 
-See `.devcontainer/README.md` for detailed information.
+**Environment Variables:**
+- Backend: `PYTHONPATH=/workspace`, `API_PORT=5000`
+- Frontend: `API_URL=http://backend:5000`, `PORT=3000`
+- Frontend connects to backend via Docker network using service name `backend`
+
+See `.devcontainer/README.md` for detailed multi-service setup documentation.
 
 #### Local Installation
 
+**Backend:**
 ```bash
-# Install dependencies
+# Install Python dependencies
 cd backend/python
 pip3 install -r requirements.txt
 
@@ -83,18 +108,42 @@ python3 backend/python/app.py
 API_PORT=5001 python3 backend/python/app.py
 ```
 
-**Important:** The application must be run from the project root directory to correctly locate the `database/` and `config/` directories.
+**Frontend:**
+```bash
+# Install Node.js dependencies
+cd frontend
+npm install
+
+# Run frontend (in separate terminal)
+npm start
+
+# Or with custom configuration
+PORT=3001 API_URL=http://localhost:5001 npm start
+```
+
+**Important:**
+- The backend must be run from the project root directory to correctly locate the `database/` and `config/` directories
+- The frontend expects the backend to be running at `http://localhost:5000` by default (configurable via `API_URL`)
+- Start backend first, then frontend
 
 ### Development
 
 ```bash
-# Run with environment variables
+# Run backend with environment variables
 FEDERATION_ENTITY_ID=https://my-federation.example.com \
 API_PORT=5001 \
+PYTHONPATH=/path/to/project \
 python3 backend/python/app.py
+
+# Run frontend with environment variables (in separate terminal)
+PORT=3000 \
+API_URL=http://localhost:5001 \
+cd frontend && npm start
 ```
 
 ## Configuration
+
+### Backend Configuration
 
 Configuration is managed via `config/config.py` with environment variable overrides:
 
@@ -104,6 +153,15 @@ Configuration is managed via `config/config.py` with environment variable overri
 - **API_PORT**: Server listen port (default: `5000`)
 - **ORGANIZATION_NAME**: Federation organization name (default: `Example Federation`)
 - **STATEMENT_LIFETIME**: Entity statement validity in seconds (default: `86400` = 24 hours)
+- **PYTHONPATH**: Path to project root (required for module imports)
+
+### Frontend Configuration
+
+Frontend configuration via environment variables:
+
+- **PORT**: Frontend server port (default: `3000`)
+- **API_URL**: Backend API URL (default: `http://localhost:5000`)
+- **NODE_ENV**: Environment mode (default: `development`)
 
 Environment variables can be set in `.env` file in project root (excluded from git).
 
@@ -142,6 +200,8 @@ Keys are persisted in the `signing_keys` table and automatically loaded on start
 
 ## API Endpoints
 
+### Backend API (Flask)
+
 - `GET /.well-known/openid-federation` - Federation entity statement (JWT)
 - `POST /register` - Register new OP/RP (requires `entity_id` and `entity_type` in JSON body)
 - `GET /fetch?sub=<entity_id>` - Get subordinate statement for entity (JWT)
@@ -150,6 +210,18 @@ Keys are persisted in the `signing_keys` table and automatically loaded on start
 - `GET /health` - Health check (JSON)
 
 All endpoints return appropriate HTTP status codes and JSON error messages on failure.
+
+### Frontend UI (Express)
+
+- `GET /` - Dashboard with entity statistics
+- `GET /entities` - Entity list page with filtering
+- `GET /register` - Entity registration form
+- `POST /register` - Submit entity registration (proxies to backend)
+- `GET /entity/:entityId` - Entity details page
+- `GET /federation` - Federation information page
+- `GET /health` - Frontend health check
+
+The frontend server proxies API requests to the backend and renders HTML using EJS templates.
 
 ## Development Notes
 
@@ -166,22 +238,75 @@ All endpoints return appropriate HTTP status codes and JSON error messages on fa
 
 ### File Organization
 
+```
+openid-federation-manager/
+├── backend/
+│   └── python/
+│       ├── app.py                    # Flask API server
+│       ├── federation_manager.py     # Core federation logic
+│       ├── entity_statement.py       # Entity statement handling
+│       └── requirements.txt          # Python dependencies
+├── frontend/
+│   ├── server.js                     # Express web server
+│   ├── package.json                  # Node.js dependencies
+│   ├── views/                        # EJS templates
+│   │   ├── layout.ejs
+│   │   ├── index.ejs
+│   │   ├── entities.ejs
+│   │   ├── register.ejs
+│   │   ├── entity-details.ejs
+│   │   └── federation.ejs
+│   └── public/                       # Static assets
+│       ├── css/style.css
+│       └── js/main.js
+├── config/
+│   └── config.py                     # Configuration management
+├── database/
+│   └── schema.sql                    # Database schema
+├── tests/
+│   ├── backend/                      # Python backend tests
+│   │   ├── test_federation_manager.py
+│   │   └── test_api.py
+│   ├── frontend/                     # Node.js frontend tests
+│   │   ├── test_server.js
+│   │   └── package.json
+│   ├── integration/                  # End-to-end tests
+│   │   ├── test_full_stack.py
+│   │   └── docker-compose.test.yml
+│   └── README.md                     # Testing documentation
+├── .devcontainer/                    # Multi-service dev environment
+│   ├── devcontainer.json
+│   ├── docker-compose.yml
+│   ├── Dockerfile                    # Main dev container
+│   ├── Dockerfile.backend            # Backend service
+│   ├── Dockerfile.frontend           # Frontend service
+│   └── README.md
+├── CLAUDE.md                         # This file
+└── README.md                         # Project documentation
+```
+
+**File Conventions:**
 - All Python source files include Apache License 2.0 copyright headers
+- All Node.js source files include Apache License 2.0 copyright headers
 - Database file (`*.db`) is excluded from git
 - Environment file (`.env`) is excluded from git
+- `node_modules/` directories are excluded from git
 - The project uses relative paths from project root
-- `.devcontainer/` directory contains Docker development container configuration
 
 ### Common Issues
 
 1. **Port 5000 in use**: macOS AirPlay uses port 5000 by default. Use `API_PORT=5001` or disable AirPlay Receiver.
-2. **Module not found errors**: Ensure you're running from the project root directory, not from `backend/python/`.
-3. **Database already exists error**: Fixed in current version - schema uses `IF NOT EXISTS` clauses.
-4. **Tests must run from project root**: Backend tests expect to be run from project root to access `database/schema.sql`.
-5. **Shared test database**: Tests may share database state; use isolation or cleanup between test runs if needed.
+2. **Port 3000 in use**: If frontend port is occupied, use `PORT=3001 npm start` or kill conflicting process.
+3. **Module not found errors**: Ensure you're running from the project root directory, not from `backend/python/`.
+4. **Frontend can't connect to backend**: Check that backend is running and `API_URL` environment variable points to correct backend address.
+5. **Database already exists error**: Fixed in current version - schema uses `IF NOT EXISTS` clauses.
+6. **Tests must run from project root**: Backend tests expect to be run from project root to access `database/schema.sql`.
+7. **Shared test database**: Tests may share database state; use isolation or cleanup between test runs if needed.
+8. **Docker service communication**: In devcontainer, frontend uses `http://backend:5000` (Docker service name) not `http://localhost:5000`.
 
 ### Testing Endpoints
 
+**Backend API:**
 ```bash
 # Health check
 curl http://localhost:5000/health
@@ -198,44 +323,90 @@ curl -X POST http://localhost:5000/register \
 curl http://localhost:5000/list
 ```
 
+**Frontend UI:**
+```bash
+# Open in browser
+open http://localhost:3000
+
+# Or test with curl
+curl http://localhost:3000/health
+```
+
+**Running Tests:**
+```bash
+# Backend tests (from project root)
+python3 -m pytest tests/backend/ -v
+
+# Frontend tests
+cd tests/frontend && npm test
+
+# Integration tests
+cd tests/integration && python3 test_full_stack.py
+```
+
 ## Code Style
 
+**Python (Backend):**
 - All code follows Apache License 2.0 header format
 - Type hints used throughout (Python 3.8+)
 - Docstrings on all public methods
 - Error handling with try/except blocks
 - Configuration via environment variables preferred over hardcoding
+- Use Black formatter for code formatting
+- Use Flake8 for linting
+
+**JavaScript (Frontend):**
+- All code follows Apache License 2.0 header format
+- Use ES6+ syntax
+- Async/await for asynchronous operations
+- Error handling with try/catch blocks
+- Configuration via environment variables
+- Consistent indentation (2 spaces)
 
 ## Development Environment
 
 ### Using the Devcontainer
 
-The project includes a complete Docker-based development environment:
+The project includes a complete Docker Compose-based multi-service development environment:
 
 **Configuration Files:**
 - `.devcontainer/devcontainer.json` - VS Code dev container configuration
-- `.devcontainer/Dockerfile` - Container image definition
-- `.devcontainer/docker-compose.yml` - Container orchestration
-- `.devcontainer/README.md` - Detailed devcontainer documentation
+- `.devcontainer/Dockerfile` - Main dev container image
+- `.devcontainer/Dockerfile.backend` - Backend service container
+- `.devcontainer/Dockerfile.frontend` - Frontend service container
+- `.devcontainer/docker-compose.yml` - Multi-service orchestration
+- `.devcontainer/README.md` - Detailed multi-service documentation
 
 **What's Included:**
-- Python 3.11 with all project dependencies
+- **Backend Container**: Python 3.11 with Flask and all dependencies
+- **Frontend Container**: Node.js 18 with Express and all dependencies
+- **App Container**: Combined workspace with both Python and Node.js tools
 - Git, SQLite3, and build tools
-- VS Code extensions for Python development
-- Pre-configured environment variables
-- Automatic port forwarding
+- VS Code extensions for Python and JavaScript development
+- Pre-configured environment variables for all services
+- Automatic port forwarding (3000, 5000, 5001)
 - Persistent bash history
+- Docker networking for inter-service communication
+- Health checks for all services
+
+**Architecture Benefits:**
+- Services run in isolation but can communicate
+- Frontend automatically connects to backend via Docker network
+- Each service has optimized dependencies
+- Node modules cached for better performance
+- Services can be started/stopped independently
 
 **When to Use:**
 - Recommended for all new developers
-- Ensures consistent environment across platforms
-- No local Python/dependency management needed
-- Faster onboarding
+- Ensures consistent full-stack environment across platforms
+- No local Python/Node.js/dependency management needed
+- Faster onboarding for full-stack development
+- Testing inter-service communication
 
 **When Not to Use:**
 - If Docker Desktop is not available
-- If you prefer managing Python environments locally
-- For production deployments (use local installation)
+- If you prefer managing Python/Node.js environments locally
+- For production deployments (use local installation or separate production containers)
 
 ## Repository Information
 

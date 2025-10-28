@@ -4,6 +4,88 @@
 version: '3.8'
 
 services:
+  # Backend Python/Flask service
+  backend:
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile.backend
+
+    volumes:
+      # Mount the workspace
+      - ..:/workspace:cached
+
+      # Persist bash history
+      - devcontainer-bashhistory:/commandhistory
+
+    # Overrides default command so things don't shut down after the process ends
+    command: sleep infinity
+
+    # Environment variables
+    environment:
+      - FEDERATION_ENTITY_ID=https://federation.example.com
+      - API_HOST=0.0.0.0
+      - API_PORT=5000
+      - DATABASE_PATH=/workspace/federation.db
+      - ORGANIZATION_NAME=Example Federation
+      - PYTHONPATH=/workspace
+
+    ports:
+      - "5000:5000"
+      - "5001:5001"
+
+    networks:
+      - federation-network
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Frontend Node.js/Express service
+  frontend:
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile.frontend
+
+    volumes:
+      # Mount the workspace
+      - ..:/workspace:cached
+
+      # Cache node_modules for performance
+      - frontend-node-modules:/workspace/frontend/node_modules
+
+    # Overrides default command so things don't shut down after the process ends
+    command: sleep infinity
+
+    # Environment variables
+    environment:
+      - PORT=3000
+      - API_URL=http://backend:5000
+      - NODE_ENV=development
+
+    ports:
+      - "3000:3000"
+
+    networks:
+      - federation-network
+
+    # Frontend depends on backend being available
+    depends_on:
+      backend:
+        condition: service_healthy
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Main development container (for VS Code to attach to)
   app:
     build:
       context: ..
@@ -26,9 +108,20 @@ services:
       - API_PORT=5000
       - DATABASE_PATH=/workspace/federation.db
       - ORGANIZATION_NAME=Example Federation
+      - PYTHONPATH=/workspace
 
-    # Use host network for easier development
-    network_mode: host
+    networks:
+      - federation-network
+
+    # Development container has access to backend and frontend services
+    depends_on:
+      - backend
+      - frontend
+
+networks:
+  federation-network:
+    driver: bridge
 
 volumes:
   devcontainer-bashhistory:
+  frontend-node-modules:
