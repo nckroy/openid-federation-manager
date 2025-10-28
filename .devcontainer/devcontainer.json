@@ -1,0 +1,52 @@
+// Copyright (c) 2025 Internet2
+// Licensed under the Apache License, Version 2.0 - see LICENSE file for details
+
+{
+	"name": "OpenID Federation Manager",
+	"dockerComposeFile": "docker-compose.yml",
+	"service": "app",
+	"workspaceFolder": "/workspace",
+
+	// Features to add to the dev container
+	"features": {
+		"ghcr.io/devcontainers/features/python:1": {
+			"version": "3.11"
+		},
+		"ghcr.io/devcontainers/features/git:1": {}
+	},
+
+	// Configure tool-specific properties
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"ms-python.python",
+				"ms-python.vscode-pylance",
+				"ms-python.black-formatter",
+				"ms-python.flake8",
+				"redhat.vscode-yaml",
+				"GitHub.copilot"
+			],
+			"settings": {
+				"python.defaultInterpreterPath": "/usr/local/bin/python",
+				"python.linting.enabled": true,
+				"python.linting.flake8Enabled": true,
+				"python.formatting.provider": "black",
+				"editor.formatOnSave": true,
+				"files.exclude": {
+					"**/__pycache__": true,
+					"**/*.pyc": true,
+					"**/.pytest_cache": true
+				}
+			}
+		}
+	},
+
+	// Use 'forwardPorts' to make a list of ports inside the container available locally
+	"forwardPorts": [5000, 5001],
+
+	// Use 'postCreateCommand' to run commands after the container is created
+	"postCreateCommand": "pip3 install -r backend/python/requirements.txt",
+
+	// Comment out to connect as root instead
+	"remoteUser": "vscode"
+}

@@ -1,0 +1,34 @@
+# Copyright (c) 2025 Internet2
+# Licensed under the Apache License, Version 2.0 - see LICENSE file for details
+
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+
+    volumes:
+      # Mount the workspace
+      - ..:/workspace:cached
+
+      # Persist bash history
+      - devcontainer-bashhistory:/commandhistory
+
+    # Overrides default command so things don't shut down after the process ends
+    command: sleep infinity
+
+    # Environment variables
+    environment:
+      - FEDERATION_ENTITY_ID=https://federation.example.com
+      - API_HOST=0.0.0.0
+      - API_PORT=5000
+      - DATABASE_PATH=/workspace/federation.db
+      - ORGANIZATION_NAME=Example Federation
+
+    # Use host network for easier development
+    network_mode: host
+
+volumes:
+  devcontainer-bashhistory:
