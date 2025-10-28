@@ -234,10 +234,41 @@ openid-federation-manager/
 │       ├── federation_manager.py     # Core federation logic
 │       ├── entity_statement.py       # Entity statement handling
 │       └── requirements.txt          # Python dependencies
+├── frontend/
+│   ├── server.js                     # Express web server
+│   ├── package.json                  # Node.js dependencies
+│   ├── views/                        # EJS templates
+│   │   ├── layout.ejs
+│   │   ├── index.ejs
+│   │   ├── entities.ejs
+│   │   ├── register.ejs
+│   │   ├── entity-details.ejs
+│   │   └── federation.ejs
+│   └── public/                       # Static assets
+│       ├── css/style.css
+│       └── js/main.js
 ├── config/
 │   └── config.py                     # Configuration management
 ├── database/
 │   └── schema.sql                    # Database schema
+├── tests/
+│   ├── backend/                      # Python backend tests
+│   │   ├── test_federation_manager.py
+│   │   └── test_api.py
+│   ├── frontend/                     # Node.js frontend tests
+│   │   ├── test_server.js
+│   │   └── package.json
+│   ├── integration/                  # End-to-end tests
+│   │   ├── test_full_stack.py
+│   │   └── docker-compose.test.yml
+│   └── README.md                     # Testing documentation
+├── .devcontainer/                    # Multi-service dev environment
+│   ├── devcontainer.json
+│   ├── docker-compose.yml
+│   ├── Dockerfile                    # Main dev container
+│   ├── Dockerfile.backend            # Backend service
+│   ├── Dockerfile.frontend           # Frontend service
+│   └── README.md
 ├── CLAUDE.md                         # Development documentation
 └── README.md                         # This file
 ```
