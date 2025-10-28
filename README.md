@@ -27,21 +27,54 @@ A lightweight Python application to manage an OpenID Federation (draft 44) as an
 
 ## Installation
 
-### 1. Clone the Repository
+You can set up the development environment using either Docker (recommended) or local installation.
+
+### Option 1: Development Container (Recommended)
+
+The easiest way to get started is using the Docker-based development container:
+
+**Prerequisites:**
+- [Docker Desktop](https://www.docker.com/products/docker-desktop)
+- [Visual Studio Code](https://code.visualstudio.com/)
+- [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
+
+**Steps:**
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/nckroy/openid-federation-manager.git
+   cd openid-federation-manager
+   ```
+
+2. Open in VS Code:
+   ```bash
+   code .
+   ```
+
+3. When prompted, click **"Reopen in Container"** (or press `F1` and select **"Dev Containers: Reopen in Container"**)
+
+4. Wait for the container to build and dependencies to install automatically
+
+5. The development environment is ready! See `.devcontainer/README.md` for more details.
+
+### Option 2: Local Installation
+
+If you prefer to install locally without Docker:
+
+#### 1. Clone the Repository
 
 ```bash
 git clone https://github.com/nckroy/openid-federation-manager.git
 cd openid-federation-manager
 ```
 
-### 2. Install Dependencies
+#### 2. Install Dependencies
 
 ```bash
 cd backend/python
 pip install -r requirements.txt
 ```
 
-### 3. Configure Environment
+#### 3. Configure Environment
 
 Create a `.env` file in the project root or set environment variables:
 
@@ -62,7 +95,7 @@ ORGANIZATION_NAME=My Federation
 - `DATABASE_PATH` - SQLite database file path (default: `federation.db`)
 - `ORGANIZATION_NAME` - Your organization's name (default: `Example Federation`)
 
-### 4. Run the Application
+#### 4. Run the Application
 
 From the project root directory:
 
@@ -71,6 +104,16 @@ python3 backend/python/app.py
 ```
 
 The server will start on `http://0.0.0.0:5000` (or your configured host/port).
+
+### Running in Development Container
+
+If you're using the development container, simply open the integrated terminal in VS Code and run:
+
+```bash
+python3 backend/python/app.py
+```
+
+All dependencies are pre-installed, and ports 5000 and 5001 are automatically forwarded to your host machine.
 
 ## Usage
 
