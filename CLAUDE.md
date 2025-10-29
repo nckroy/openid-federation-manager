@@ -29,17 +29,19 @@ The application consists of two main components:
 
 ### Database Layer
 
-SQLite database (`database/schema.sql`) with four main tables:
+SQLite database (`database/schema.sql`) with five main tables:
 - **entities**: Registered OPs and RPs with metadata and JWKS
 - **entity_statements**: Signed JWT statements for subordinate entities
 - **signing_keys**: RSA key pairs for signing statements (auto-generated on first run)
 - **federation_config**: Configuration storage
+- **validation_rules**: Configurable validation rules for entity statement requirements
 
 ### Federation Flow
 
 1. **Entity Registration** (`POST /register`):
    - Fetches entity's `.well-known/openid-federation` statement
    - Validates entity type (OP or RP)
+   - **Applies validation rules** to ensure entity statement meets federation requirements
    - Stores metadata and JWKS in database
    - Creates subordinate statement signed by federation
 
@@ -197,17 +199,29 @@ Keys are persisted in the `signing_keys` table and automatically loaded on start
 - `list_entities(entity_type=None)` → `List[str]` - Returns list of entity IDs
 - `store_entity_statement(entity_id, issuer, subject, statement, expires_at)` → `None`
 - `get_entity_statement(subject)` → `Optional[str]` - Returns JWT string or None if not found/expired
+- `create_validation_rule(rule_name, entity_type, field_path, validation_type, validation_value, error_message)` → `bool`
+- `get_validation_rules(entity_type=None, active_only=True)` → `List[Dict]`
+- `update_validation_rule(rule_id, **kwargs)` → `bool`
+- `delete_validation_rule(rule_id)` → `bool`
+- `validate_entity_statement(entity_type, metadata, jwks)` → `Tuple[bool, List[str]]` - Returns validation result and error messages
 
 ## API Endpoints
 
 ### Backend API (Flask)
 
+**Federation Endpoints:**
 - `GET /.well-known/openid-federation` - Federation entity statement (JWT)
 - `POST /register` - Register new OP/RP (requires `entity_id` and `entity_type` in JSON body)
 - `GET /fetch?sub=<entity_id>` - Get subordinate statement for entity (JWT)
 - `GET /list?entity_type=<OP|RP>` - List registered entities (optional filter)
 - `GET /entity/<entity_id>` - Get entity details (JSON)
 - `GET /health` - Health check (JSON)
+
+**Validation Rules Endpoints:**
+- `GET /validation-rules` - Get all validation rules (filter by `entity_type`, `active_only`)
+- `POST /validation-rules` - Create new validation rule
+- `PUT /validation-rules/<rule_id>` - Update validation rule
+- `DELETE /validation-rules/<rule_id>` - Delete validation rule
 
 All endpoints return appropriate HTTP status codes and JSON error messages on failure.
 
@@ -218,10 +232,109 @@ All endpoints return appropriate HTTP status codes and JSON error messages on fa
 - `GET /register` - Entity registration form
 - `POST /register` - Submit entity registration (proxies to backend)
 - `GET /entity/:entityId` - Entity details page
+- `GET /validation-rules` - Validation rules management page
+- `POST /validation-rules` - Create new validation rule
+- `POST /validation-rules/:id/delete` - Delete validation rule
+- `POST /validation-rules/:id/toggle` - Enable/disable validation rule
 - `GET /federation` - Federation information page
 - `GET /health` - Frontend health check
 
 The frontend server proxies API requests to the backend and renders HTML using EJS templates.
+
+## Validation Rules Feature
+
+The federation manager includes a configurable validation system that allows administrators to enforce specific requirements on entity statements during registration.
+
+### Validation Types
+
+1. **required** - Field must exist and have a non-null value
+2. **exists** - Field must be present (can be null or empty)
+3. **exact_value** - Field must match the specified value exactly (supports JSON for complex types)
+4. **regex** - Field value must match the regular expression pattern
+5. **range** - Numeric field must fall within the specified min/max range
+
+### Field Path Syntax
+
+Use dot notation to access nested fields:
+- `metadata.openid_provider.issuer` - OP issuer URL
+- `metadata.openid_provider.scopes_supported` - Supported scopes array
+- `metadata.openid_relying_party.client_name` - RP client name
+- `jwks.keys` - JWKS keys array
+
+### Example Validation Rules
+
+```python
+# Require HTTPS for OP issuer
+{
+    "rule_name": "https_issuer",
+    "entity_type": "OP",
+    "field_path": "metadata.openid_provider.issuer",
+    "validation_type": "regex",
+    "validation_value": "^https://.*",
+    "error_message": "Issuer must use HTTPS"
+}
+
+# Require specific grant types
+{
+    "rule_name": "authorization_code_required",
+    "entity_type": "OP",
+    "field_path": "metadata.openid_provider.grant_types_supported",
+    "validation_type": "exact_value",
+    "validation_value": '["authorization_code"]',
+    "error_message": "Must support authorization_code grant type"
+}
+
+# Enforce token lifetime range
+{
+    "rule_name": "token_lifetime",
+    "entity_type": "BOTH",
+    "field_path": "metadata.openid_provider.default_max_age",
+    "validation_type": "range",
+    "validation_value": '{"min": 60, "max": 3600}',
+    "error_message": "Token lifetime must be between 60 and 3600 seconds"
+}
+```
+
+### Managing Validation Rules
+
+**Via UI:**
+1. Navigate to `/validation-rules` in the web interface
+2. Use the form to add new rules with appropriate validation types
+3. Enable/disable rules without deleting them
+4. Delete rules when no longer needed
+
+**Via API:**
+```bash
+# Create rule
+curl -X POST http://localhost:5000/validation-rules \
+  -H "Content-Type: application/json" \
+  -d '{
+    "rule_name": "require_scopes",
+    "entity_type": "OP",
+    "field_path": "metadata.openid_provider.scopes_supported",
+    "validation_type": "required",
+    "error_message": "Scopes must be specified"
+  }'
+
+# List rules
+curl http://localhost:5000/validation-rules
+
+# Update rule
+curl -X PUT http://localhost:5000/validation-rules/1 \
+  -H "Content-Type: application/json" \
+  -d '{"is_active": 0}'
+
+# Delete rule
+curl -X DELETE http://localhost:5000/validation-rules/1
+```
+
+### Validation Behavior
+
+- Validation rules are applied automatically during entity registration (`POST /register`)
+- If validation fails, registration is rejected with HTTP 400 and detailed error messages
+- Only **active** rules are applied during validation
+- Rules targeting `BOTH` entity types apply to both OPs and RPs
+- Rules can be temporarily disabled without deletion by setting `is_active=0`
 
 ## Development Notes
 
@@ -230,6 +343,7 @@ The frontend server proxies API requests to the backend and renders HTML using E
 - Entity IDs **must** be full HTTPS URLs (e.g., `https://op.example.com`)
 - Statements have 24-hour validity by default (configurable via `STATEMENT_LIFETIME`)
 - The federation automatically fetches and validates entity statements during registration
+- **Validation rules are enforced during entity registration** - entities failing validation are rejected
 - Database schema is auto-created on first run using `CREATE TABLE IF NOT EXISTS`
 - The application runs in debug mode by default when executed directly
 - Entity statements expire based on SQLite datetime comparison with `datetime('now')`

@@ -57,7 +57,18 @@ def register_entity():
     # Extract metadata and JWKS
     metadata = payload.get('metadata', {})
     jwks = payload.get('jwks', {})
-    
+
+    # Validate entity statement against configured rules
+    is_valid, validation_errors = federation_manager.validate_entity_statement(
+        entity_type, metadata, jwks
+    )
+
+    if not is_valid:
+        return jsonify({
+            'error': 'Entity statement validation failed',
+            'validation_errors': validation_errors
+        }), 400
+
     # Register the entity
     success = federation_manager.register_entity(
         entity_id,
@@ -65,7 +76,7 @@ def register_entity():
         metadata,
         jwks
     )
-    
+
     if not success:
         return jsonify({'error': 'Entity already registered'}), 409
     
@@ -159,6 +170,71 @@ def get_entity_info(entity_id):
 def health():
     """Health check endpoint"""
     return jsonify({'status': 'healthy'})
+
+# Validation Rules Endpoints
+
+@app.route('/validation-rules', methods=['GET'])
+def get_validation_rules():
+    """Get all validation rules"""
+    entity_type = request.args.get('entity_type')
+    active_only = request.args.get('active_only', 'true').lower() == 'true'
+
+    rules = federation_manager.get_validation_rules(entity_type=entity_type, active_only=active_only)
+
+    return jsonify({'rules': rules})
+
+@app.route('/validation-rules', methods=['POST'])
+def create_validation_rule():
+    """Create a new validation rule"""
+    data = request.json
+
+    rule_name = data.get('rule_name')
+    entity_type = data.get('entity_type')
+    field_path = data.get('field_path')
+    validation_type = data.get('validation_type')
+    validation_value = data.get('validation_value')
+    error_message = data.get('error_message')
+
+    if not all([rule_name, entity_type, field_path, validation_type]):
+        return jsonify({'error': 'rule_name, entity_type, field_path, and validation_type are required'}), 400
+
+    if entity_type not in ['OP', 'RP', 'BOTH']:
+        return jsonify({'error': 'entity_type must be OP, RP, or BOTH'}), 400
+
+    if validation_type not in ['required', 'exact_value', 'regex', 'range', 'exists']:
+        return jsonify({'error': 'Invalid validation_type'}), 400
+
+    success = federation_manager.create_validation_rule(
+        rule_name, entity_type, field_path, validation_type,
+        validation_value, error_message
+    )
+
+    if not success:
+        return jsonify({'error': 'Rule name already exists'}), 409
+
+    return jsonify({'status': 'created', 'rule_name': rule_name}), 201
+
+@app.route('/validation-rules/<int:rule_id>', methods=['PUT'])
+def update_validation_rule(rule_id):
+    """Update a validation rule"""
+    data = request.json
+
+    success = federation_manager.update_validation_rule(rule_id, **data)
+
+    if not success:
+        return jsonify({'error': 'Rule not found or invalid data'}), 404
+
+    return jsonify({'status': 'updated', 'rule_id': rule_id})
+
+@app.route('/validation-rules/<int:rule_id>', methods=['DELETE'])
+def delete_validation_rule(rule_id):
+    """Delete a validation rule"""
+    success = federation_manager.delete_validation_rule(rule_id)
+
+    if not success:
+        return jsonify({'error': 'Rule not found'}), 404
+
+    return jsonify({'status': 'deleted', 'rule_id': rule_id})
 
 if __name__ == '__main__':
     app.run(

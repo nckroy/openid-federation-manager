@@ -41,7 +41,22 @@ CREATE TABLE IF NOT EXISTS signing_keys (
     is_active BOOLEAN DEFAULT 1
 );
 
+CREATE TABLE IF NOT EXISTS validation_rules (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    rule_name TEXT UNIQUE NOT NULL,
+    entity_type TEXT NOT NULL CHECK(entity_type IN ('OP', 'RP', 'BOTH')),
+    field_path TEXT NOT NULL,
+    validation_type TEXT NOT NULL CHECK(validation_type IN ('required', 'exact_value', 'regex', 'range', 'exists')),
+    validation_value TEXT,
+    error_message TEXT,
+    is_active BOOLEAN DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE INDEX IF NOT EXISTS idx_entity_id ON entities(entity_id);
 CREATE INDEX IF NOT EXISTS idx_entity_type ON entities(entity_type);
 CREATE INDEX IF NOT EXISTS idx_statement_subject ON entity_statements(subject);
 CREATE INDEX IF NOT EXISTS idx_statement_expires ON entity_statements(expires_at);
+CREATE INDEX IF NOT EXISTS idx_validation_entity_type ON validation_rules(entity_type);
+CREATE INDEX IF NOT EXISTS idx_validation_active ON validation_rules(is_active);

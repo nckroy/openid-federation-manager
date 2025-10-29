@@ -1,0 +1,263 @@
+<!-- Copyright (c) 2025 Internet2 -->
+<!-- Licensed under the Apache License, Version 2.0 - see LICENSE file for details -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Validation Rules - <%= federationName %></title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <h1><%= federationName %></h1>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="/">Dashboard</a></li>
+                <li><a href="/entities">Entities</a></li>
+                <li><a href="/register">Register Entity</a></li>
+                <li><a href="/validation-rules" class="active">Validation Rules</a></li>
+                <li><a href="/federation">Federation Info</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <div class="container">
+            <h2>Entity Validation Rules</h2>
+            <p class="subtitle">Configure requirements for entity statements during registration</p>
+
+            <% if (typeof error !== 'undefined' && error) { %>
+                <div class="alert alert-error">
+                    <%= error %>
+                </div>
+            <% } %>
+
+            <% const urlParams = new URLSearchParams(typeof window !== 'undefined' && window.location ? window.location.search : ''); %>
+            <% if (urlParams.get('success') === 'created') { %>
+                <div class="alert alert-success">
+                    Validation rule created successfully!
+                </div>
+            <% } else if (urlParams.get('success') === 'deleted') { %>
+                <div class="alert alert-success">
+                    Validation rule deleted successfully!
+                </div>
+            <% } else if (urlParams.get('success') === 'updated') { %>
+                <div class="alert alert-success">
+                    Validation rule updated successfully!
+                </div>
+            <% } %>
+
+            <!-- Add New Rule Form -->
+            <div class="card">
+                <h3>Add New Validation Rule</h3>
+                <form method="POST" action="/validation-rules" class="validation-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="rule_name">Rule Name *</label>
+                            <input type="text" id="rule_name" name="rule_name" required
+                                   placeholder="e.g., require-scopes"
+                                   value="<%= typeof formData !== 'undefined' && formData ? formData.rule_name || '' : '' %>">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="entity_type">Entity Type *</label>
+                            <select id="entity_type" name="entity_type" required>
+                                <option value="BOTH">Both OP and RP</option>
+                                <option value="OP">OpenID Provider (OP)</option>
+                                <option value="RP">Relying Party (RP)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="field_path">Field Path *</label>
+                            <input type="text" id="field_path" name="field_path" required
+                                   placeholder="e.g., metadata.openid_provider.scopes_supported"
+                                   value="<%= typeof formData !== 'undefined' && formData ? formData.field_path || '' : '' %>">
+                            <small>Use dot notation for nested fields (e.g., metadata.openid_provider.token_endpoint)</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="validation_type">Validation Type *</label>
+                            <select id="validation_type" name="validation_type" required onchange="updateValidationValueHint(this.value)">
+                                <option value="required">Required - Field must exist and not be empty</option>
+                                <option value="exists">Exists - Field must be present (can be empty)</option>
+                                <option value="exact_value">Exact Value - Field must match exact value</option>
+                                <option value="regex">Regex Pattern - Field must match regex</option>
+                                <option value="range">Range - Numeric field must be within range</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="validation_value">Validation Value</label>
+                        <input type="text" id="validation_value" name="validation_value"
+                               placeholder="Value depends on validation type"
+                               value="<%= typeof formData !== 'undefined' && formData ? formData.validation_value || '' : '' %>">
+                        <small id="validation_value_hint">
+                            For "exact_value": Enter the expected value (JSON format for complex types)<br>
+                            For "regex": Enter a regular expression pattern<br>
+                            For "range": Enter JSON like {"min": 0, "max": 100}<br>
+                            For "required" or "exists": Leave empty
+                        </small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="error_message">Custom Error Message</label>
+                        <input type="text" id="error_message" name="error_message"
+                               placeholder="Optional custom error message"
+                               value="<%= typeof formData !== 'undefined' && formData ? formData.error_message || '' : '' %>">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Create Rule</button>
+                </form>
+            </div>
+
+            <!-- Existing Rules -->
+            <div class="card">
+                <h3>Existing Validation Rules (<%= rules.length %>)</h3>
+
+                <% if (rules.length === 0) { %>
+                    <p class="no-data">No validation rules configured. Add your first rule above.</p>
+                <% } else { %>
+                    <table class="rules-table">
+                        <thead>
+                            <tr>
+                                <th>Rule Name</th>
+                                <th>Entity Type</th>
+                                <th>Field Path</th>
+                                <th>Validation Type</th>
+                                <th>Validation Value</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% rules.forEach(rule => { %>
+                                <tr class="<%= rule.is_active ? '' : 'inactive' %>">
+                                    <td><strong><%= rule.rule_name %></strong></td>
+                                    <td>
+                                        <span class="badge badge-<%= rule.entity_type.toLowerCase() %>">
+                                            <%= rule.entity_type %>
+                                        </span>
+                                    </td>
+                                    <td><code><%= rule.field_path %></code></td>
+                                    <td><%= rule.validation_type %></td>
+                                    <td>
+                                        <% if (rule.validation_value) { %>
+                                            <code class="value-display"><%= rule.validation_value %></code>
+                                        <% } else { %>
+                                            <em>-</em>
+                                        <% } %>
+                                    </td>
+                                    <td>
+                                        <span class="status-badge <%= rule.is_active ? 'status-active' : 'status-inactive' %>">
+                                            <%= rule.is_active ? 'Active' : 'Inactive' %>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <form method="POST" action="/validation-rules/<%= rule.id %>/toggle" style="display: inline;">
+                                            <input type="hidden" name="is_active" value="<%= rule.is_active ? 0 : 1 %>">
+                                            <button type="submit" class="btn btn-small btn-secondary">
+                                                <%= rule.is_active ? 'Disable' : 'Enable' %>
+                                            </button>
+                                        </form>
+                                        <form method="POST" action="/validation-rules/<%= rule.id %>/delete"
+                                              style="display: inline;"
+                                              onsubmit="return confirm('Are you sure you want to delete this rule?');">
+                                            <button type="submit" class="btn btn-small btn-danger">Delete</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                <% if (rule.error_message) { %>
+                                    <tr class="rule-details">
+                                        <td colspan="7">
+                                            <small><strong>Error Message:</strong> <%= rule.error_message %></small>
+                                        </td>
+                                    </tr>
+                                <% } %>
+                            <% }); %>
+                        </tbody>
+                    </table>
+                <% } %>
+            </div>
+
+            <!-- Documentation -->
+            <div class="card">
+                <h3>How Validation Rules Work</h3>
+                <div class="docs">
+                    <h4>Validation Types:</h4>
+                    <ul>
+                        <li><strong>Required:</strong> Field must exist and have a non-null value</li>
+                        <li><strong>Exists:</strong> Field must be present in the entity statement (can be null or empty)</li>
+                        <li><strong>Exact Value:</strong> Field must match the specified value exactly (supports JSON for complex types)</li>
+                        <li><strong>Regex:</strong> Field value must match the regular expression pattern</li>
+                        <li><strong>Range:</strong> Numeric field must fall within the specified min/max range</li>
+                    </ul>
+
+                    <h4>Field Path Examples:</h4>
+                    <ul>
+                        <li><code>metadata.openid_provider.issuer</code> - OP issuer URL</li>
+                        <li><code>metadata.openid_provider.scopes_supported</code> - Supported scopes array</li>
+                        <li><code>metadata.openid_relying_party.client_name</code> - RP client name</li>
+                        <li><code>jwks.keys</code> - JWKS keys array</li>
+                    </ul>
+
+                    <h4>Example Validation Values:</h4>
+                    <ul>
+                        <li><strong>Exact Value (string):</strong> <code>"authorization_code"</code></li>
+                        <li><strong>Exact Value (array):</strong> <code>["openid", "profile"]</code></li>
+                        <li><strong>Regex (URL pattern):</strong> <code>^https://.*</code></li>
+                        <li><strong>Range:</strong> <code>{"min": 2048, "max": 4096}</code></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 Internet2. Licensed under Apache License 2.0.</p>
+            <p>Backend API: <%= apiUrl %></p>
+        </div>
+    </footer>
+
+    <script>
+        function updateValidationValueHint(validationType) {
+            const hint = document.getElementById('validation_value_hint');
+            const input = document.getElementById('validation_value');
+
+            switch(validationType) {
+                case 'required':
+                case 'exists':
+                    hint.innerHTML = 'Not required for this validation type';
+                    input.placeholder = 'Leave empty';
+                    break;
+                case 'exact_value':
+                    hint.innerHTML = 'Enter the expected value. Use JSON format for complex types (arrays, objects).<br>Examples: <code>"value"</code>, <code>123</code>, <code>["item1", "item2"]</code>';
+                    input.placeholder = '"expected_value"';
+                    break;
+                case 'regex':
+                    hint.innerHTML = 'Enter a regular expression pattern.<br>Examples: <code>^https://.*</code>, <code>\\d{4}-\\d{2}-\\d{2}</code>';
+                    input.placeholder = '^https://.*';
+                    break;
+                case 'range':
+                    hint.innerHTML = 'Enter a JSON object with min and/or max values.<br>Example: <code>{"min": 0, "max": 100}</code>';
+                    input.placeholder = '{"min": 0, "max": 100}';
+                    break;
+            }
+        }
+
+        // Initialize hint on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const validationType = document.getElementById('validation_type').value;
+            updateValidationValueHint(validationType);
+        });
+    </script>
+</body>
+</html>

@@ -6,10 +6,12 @@ A lightweight Python application to manage an OpenID Federation (draft 44) as an
 
 - **Entity Registration**: Accept and register OpenID-enabled OP and RP entities
 - **Automatic Entity Discovery**: Fetch entity statements from registered entities via `.well-known/openid-federation`
+- **Validation Rules**: Configurable requirements for entity statements with regex, exact value, and range validation
 - **Subordinate Statement Generation**: Create and sign subordinate statements for registered entities
 - **Cryptographic Key Management**: Automatic RSA-2048 key pair generation and management
 - **SQLite Database**: Persistent storage for entities, statements, and signing keys
 - **RESTful API**: Complete HTTP API for federation management
+- **Web UI**: User-friendly interface for managing entities and validation rules
 
 ### Federation Endpoints
 
@@ -414,12 +416,13 @@ curl http://localhost:5000/.well-known/openid-federation
 
 ### Database Schema
 
-The application uses SQLite with four main tables:
+The application uses SQLite with five main tables:
 
 - **entities** - Registered OP and RP entities with metadata and JWKS
 - **entity_statements** - Signed subordinate statements
 - **signing_keys** - RSA key pairs for signing statements
 - **federation_config** - Federation configuration storage
+- **validation_rules** - Configurable validation rules for entity statement requirements
 
 ### Entity Statements
 
@@ -433,6 +436,63 @@ Entity statements are JWTs signed with RS256 containing:
 
 Statements have a 24-hour validity period (configurable via `STATEMENT_LIFETIME`). Statement expiration is checked using SQLite's `datetime('now')` comparison.
 
+## Validation Rules
+
+The federation manager includes a powerful validation system that allows administrators to enforce specific requirements on entity statements during registration.
+
+### Validation Types
+
+1. **required** - Field must exist and have a non-null value
+2. **exists** - Field must be present (can be null or empty)
+3. **exact_value** - Field must match the specified value exactly (supports JSON for complex types)
+4. **regex** - Field value must match the regular expression pattern
+5. **range** - Numeric field must fall within the specified min/max range
+
+### Managing Validation Rules
+
+**Via Web UI:**
+Navigate to the **Validation Rules** page in the web interface to:
+- Create new validation rules with a user-friendly form
+- Enable/disable rules without deleting them
+- View all configured rules in a searchable table
+- Delete rules that are no longer needed
+
+**Via API:**
+```bash
+# Create a rule requiring HTTPS for OP issuers
+curl -X POST http://localhost:5000/validation-rules \
+  -H "Content-Type: application/json" \
+  -d '{
+    "rule_name": "https_issuer",
+    "entity_type": "OP",
+    "field_path": "metadata.openid_provider.issuer",
+    "validation_type": "regex",
+    "validation_value": "^https://.*",
+    "error_message": "Issuer must use HTTPS"
+  }'
+
+# List all validation rules
+curl http://localhost:5000/validation-rules
+
+# Update a rule (e.g., disable it)
+curl -X PUT http://localhost:5000/validation-rules/1 \
+  -H "Content-Type: application/json" \
+  -d '{"is_active": 0}'
+
+# Delete a rule
+curl -X DELETE http://localhost:5000/validation-rules/1
+```
+
+### Example Use Cases
+
+- **Enforce HTTPS**: Require all OP issuer URLs to use HTTPS protocol
+- **Mandate grant types**: Ensure OPs support specific OAuth grant types
+- **Token lifetime limits**: Enforce minimum and maximum token lifetimes
+- **Required scopes**: Mandate specific OAuth scopes be supported
+- **Client naming conventions**: Require RP client names to follow naming patterns
+
+Validation rules are automatically applied during entity registration. If an entity fails validation, registration is rejected with detailed error messages explaining what requirements were not met.
+
 ## Security Considerations
 
 - RSA-2048 keys are automatically generated on first run
@@ -442,6 +502,7 @@ Statements have a 24-hour validity period (configurable via `STATEMENT_LIFETIME`
 - All entity IDs must be valid HTTPS URLs
 - JWKS public keys use Base64url encoding without padding
 - Keys are reused across application restarts for consistency
+- Validation rules enforce federation security policies during entity registration
 
 ## Development
 

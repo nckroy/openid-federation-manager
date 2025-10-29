@@ -3,8 +3,9 @@
 
 import sqlite3
 import json
+import re
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.backends import default_backend
@@ -235,15 +236,232 @@ class FederationManager:
         """Get the latest entity statement for a subject"""
         conn = self.get_connection()
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             SELECT statement FROM entity_statements
             WHERE subject = ? AND expires_at > datetime('now')
             ORDER BY issued_at DESC
             LIMIT 1
         ''', (subject,))
-        
+
         row = cursor.fetchone()
         conn.close()
-        
+
         return row['statement'] if row else None
+
+    # Validation Rules Management
+
+    def create_validation_rule(self, rule_name: str, entity_type: str,
+                               field_path: str, validation_type: str,
+                               validation_value: Optional[str] = None,
+                               error_message: Optional[str] = None) -> bool:
+        """Create a new validation rule"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute('''
+                INSERT INTO validation_rules
+                (rule_name, entity_type, field_path, validation_type, validation_value, error_message)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (rule_name, entity_type, field_path, validation_type, validation_value, error_message))
+
+            conn.commit()
+            return True
+        except sqlite3.IntegrityError:
+            return False
+        finally:
+            conn.close()
+
+    def get_validation_rules(self, entity_type: Optional[str] = None,
+                            active_only: bool = True) -> List[Dict]:
+        """Get validation rules, optionally filtered by entity type"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        query = 'SELECT * FROM validation_rules WHERE 1=1'
+        params = []
+
+        if active_only:
+            query += ' AND is_active = 1'
+
+        if entity_type:
+            query += ' AND (entity_type = ? OR entity_type = "BOTH")'
+            params.append(entity_type)
+
+        cursor.execute(query, params)
+
+        rules = []
+        for row in cursor.fetchall():
+            rules.append({
+                'id': row['id'],
+                'rule_name': row['rule_name'],
+                'entity_type': row['entity_type'],
+                'field_path': row['field_path'],
+                'validation_type': row['validation_type'],
+                'validation_value': row['validation_value'],
+                'error_message': row['error_message'],
+                'is_active': row['is_active'],
+                'created_at': row['created_at'],
+                'updated_at': row['updated_at']
+            })
+
+        conn.close()
+        return rules
+
+    def update_validation_rule(self, rule_id: int, **kwargs) -> bool:
+        """Update a validation rule"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        allowed_fields = ['rule_name', 'entity_type', 'field_path', 'validation_type',
+                         'validation_value', 'error_message', 'is_active']
+
+        updates = []
+        values = []
+
+        for field, value in kwargs.items():
+            if field in allowed_fields:
+                updates.append(f'{field} = ?')
+                values.append(value)
+
+        if not updates:
+            conn.close()
+            return False
+
+        updates.append('updated_at = CURRENT_TIMESTAMP')
+        values.append(rule_id)
+
+        query = f'UPDATE validation_rules SET {", ".join(updates)} WHERE id = ?'
+
+        try:
+            cursor.execute(query, values)
+            conn.commit()
+            success = cursor.rowcount > 0
+        except sqlite3.IntegrityError:
+            success = False
+        finally:
+            conn.close()
+
+        return success
+
+    def delete_validation_rule(self, rule_id: int) -> bool:
+        """Delete a validation rule"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute('DELETE FROM validation_rules WHERE id = ?', (rule_id,))
+        conn.commit()
+        success = cursor.rowcount > 0
+        conn.close()
+
+        return success
+
+    def _get_nested_value(self, data: Dict, path: str):
+        """Get a nested value from a dictionary using dot notation"""
+        keys = path.split('.')
+        value = data
+
+        for key in keys:
+            if isinstance(value, dict):
+                value = value.get(key)
+                if value is None:
+                    return None
+            else:
+                return None
+
+        return value
+
+    def validate_entity_statement(self, entity_type: str, metadata: Dict, jwks: Dict) -> Tuple[bool, List[str]]:
+        """
+        Validate entity statement against configured rules
+        Returns: (is_valid, error_messages)
+        """
+        rules = self.get_validation_rules(entity_type=entity_type, active_only=True)
+        errors = []
+
+        # Combine metadata and jwks for validation
+        full_data = {
+            'metadata': metadata,
+            'jwks': jwks
+        }
+
+        for rule in rules:
+            field_path = rule['field_path']
+            validation_type = rule['validation_type']
+            validation_value = rule['validation_value']
+            error_message = rule['error_message'] or f"Validation failed for {field_path}"
+
+            # Get the value from the entity statement
+            actual_value = self._get_nested_value(full_data, field_path)
+
+            # Apply validation based on type
+            if validation_type == 'required':
+                if actual_value is None:
+                    errors.append(f"{error_message} (field is required)")
+
+            elif validation_type == 'exists':
+                if actual_value is None:
+                    errors.append(f"{error_message} (field must exist)")
+
+            elif validation_type == 'exact_value':
+                if validation_value is None:
+                    continue
+
+                # Parse validation_value as JSON to support different types
+                try:
+                    expected_value = json.loads(validation_value)
+                except (json.JSONDecodeError, TypeError):
+                    expected_value = validation_value
+
+                if actual_value != expected_value:
+                    errors.append(f"{error_message} (expected: {expected_value}, got: {actual_value})")
+
+            elif validation_type == 'regex':
+                if validation_value is None:
+                    continue
+
+                if actual_value is None:
+                    errors.append(f"{error_message} (field is missing)")
+                    continue
+
+                # Convert actual_value to string for regex matching
+                actual_str = str(actual_value) if not isinstance(actual_value, str) else actual_value
+
+                try:
+                    if not re.match(validation_value, actual_str):
+                        errors.append(f"{error_message} (does not match pattern: {validation_value})")
+                except re.error as e:
+                    errors.append(f"{error_message} (invalid regex pattern: {str(e)})")
+
+            elif validation_type == 'range':
+                if validation_value is None:
+                    continue
+
+                # Parse range as JSON: {"min": value, "max": value}
+                try:
+                    range_spec = json.loads(validation_value)
+                    min_val = range_spec.get('min')
+                    max_val = range_spec.get('max')
+
+                    if actual_value is None:
+                        errors.append(f"{error_message} (field is missing)")
+                        continue
+
+                    # Try to convert to number for comparison
+                    try:
+                        actual_num = float(actual_value) if not isinstance(actual_value, (int, float)) else actual_value
+
+                        if min_val is not None and actual_num < min_val:
+                            errors.append(f"{error_message} (value {actual_num} < minimum {min_val})")
+
+                        if max_val is not None and actual_num > max_val:
+                            errors.append(f"{error_message} (value {actual_num} > maximum {max_val})")
+
+                    except (ValueError, TypeError):
+                        errors.append(f"{error_message} (value is not numeric)")
+
+                except (json.JSONDecodeError, TypeError):
+                    errors.append(f"{error_message} (invalid range specification)")
+
+        return (len(errors) == 0, errors)

@@ -158,6 +158,73 @@ app.get('/api/entity/:entityId(*)', async (req, res) => {
     }
 });
 
+// Validation Rules Routes
+app.get('/validation-rules', async (req, res) => {
+    try {
+        const response = await axios.get(`${API_URL}/validation-rules`);
+        res.render('validation-rules', {
+            rules: response.data.rules || [],
+            error: null
+        });
+    } catch (error) {
+        console.error('Error fetching validation rules:', error.message);
+        res.render('validation-rules', {
+            rules: [],
+            error: 'Unable to fetch validation rules'
+        });
+    }
+});
+
+app.post('/validation-rules', async (req, res) => {
+    try {
+        const response = await axios.post(`${API_URL}/validation-rules`, req.body);
+        res.redirect('/validation-rules?success=created');
+    } catch (error) {
+        const errorMessage = error.response?.data?.error || error.message;
+        const response = await axios.get(`${API_URL}/validation-rules`);
+        res.render('validation-rules', {
+            rules: response.data.rules || [],
+            error: `Failed to create rule: ${errorMessage}`,
+            formData: req.body
+        });
+    }
+});
+
+app.post('/validation-rules/:id/delete', async (req, res) => {
+    try {
+        await axios.delete(`${API_URL}/validation-rules/${req.params.id}`);
+        res.redirect('/validation-rules?success=deleted');
+    } catch (error) {
+        const errorMessage = error.response?.data?.error || error.message;
+        res.redirect(`/validation-rules?error=${encodeURIComponent(errorMessage)}`);
+    }
+});
+
+app.post('/validation-rules/:id/toggle', async (req, res) => {
+    try {
+        const { is_active } = req.body;
+        await axios.put(`${API_URL}/validation-rules/${req.params.id}`, {
+            is_active: is_active === '1' ? 1 : 0
+        });
+        res.redirect('/validation-rules?success=updated');
+    } catch (error) {
+        const errorMessage = error.response?.data?.error || error.message;
+        res.redirect(`/validation-rules?error=${encodeURIComponent(errorMessage)}`);
+    }
+});
+
+// API proxy for validation rules
+app.get('/api/validation-rules', async (req, res) => {
+    try {
+        const response = await axios.get(`${API_URL}/validation-rules`);
+        res.json(response.data);
+    } catch (error) {
+        res.status(error.response?.status || 500).json({
+            error: error.response?.data?.error || error.message
+        });
+    }
+});
+
 app.get('/health', async (req, res) => {
     try {
         const response = await axios.get(`${API_URL}/health`);
