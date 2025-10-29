@@ -213,8 +213,10 @@ Keys are persisted in the `signing_keys` table and automatically loaded on start
 - `GET /.well-known/openid-federation` - Federation entity statement (JWT)
 - `POST /register` - Register new OP/RP (requires `entity_id` and `entity_type` in JSON body)
 - `GET /fetch?sub=<entity_id>` - Get subordinate statement for entity (JWT)
+  - **Note:** Entity IDs in `sub` parameter should be URL-encoded. Backend automatically decodes.
 - `GET /list?entity_type=<OP|RP>` - List registered entities (optional filter)
 - `GET /entity/<entity_id>` - Get entity details (JSON)
+  - **Note:** Entity IDs in path should be URL-encoded. Backend automatically decodes.
 - `GET /health` - Health check (JSON)
 
 **Validation Rules Endpoints:**
@@ -224,6 +226,15 @@ Keys are persisted in the `signing_keys` table and automatically loaded on start
 - `DELETE /validation-rules/<rule_id>` - Delete validation rule
 
 All endpoints return appropriate HTTP status codes and JSON error messages on failure.
+
+**URL Encoding:**
+Entity IDs in URLs are automatically handled:
+- **Frontend** URL-encodes entity IDs when making API calls (using `encodeURIComponent()`)
+- **Backend** URL-decodes entity IDs from query parameters and paths (using `unquote()`)
+- **Database** stores entity IDs in original, unencoded form (e.g., `https://op.example.com/auth`)
+- **Registration Response** includes fetch endpoint URL with properly encoded entity ID
+
+This ensures entity IDs with special characters (slashes, colons, query parameters, etc.) are correctly transmitted via HTTP while maintaining clean storage in the database.
 
 ### Frontend UI (Express)
 
