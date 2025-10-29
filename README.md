@@ -374,7 +374,19 @@ Retrieve a subordinate statement for a registered entity:
 curl http://localhost:5000/fetch?sub=https://op.example.com
 ```
 
+For entity IDs with special characters (paths, query parameters, etc.), URL-encode the entity ID:
+
+```bash
+# Entity ID with path: https://op.example.com/auth
+curl "http://localhost:5000/fetch?sub=https%3A%2F%2Fop.example.com%2Fauth"
+
+# Or let curl handle encoding with --data-urlencode
+curl -G http://localhost:5000/fetch --data-urlencode "sub=https://op.example.com/auth"
+```
+
 Returns a signed JWT (entity statement) with `Content-Type: application/entity-statement+jwt`
+
+**Note:** The frontend automatically URL-encodes entity IDs when making requests.
 
 ### List Registered Entities
 
@@ -398,12 +410,56 @@ Retrieve detailed information about a specific entity:
 curl http://localhost:5000/entity/https://op.example.com
 ```
 
+For entity IDs with special characters, URL-encode the entity ID:
+
+```bash
+# Entity ID with path: https://op.example.com/auth
+curl "http://localhost:5000/entity/https%3A%2F%2Fop.example.com%2Fauth"
+```
+
 ### Get Federation Entity Statement
 
 Retrieve the federation's own entity statement:
 
 ```bash
 curl http://localhost:5000/.well-known/openid-federation
+```
+
+### URL Encoding for Entity IDs
+
+Entity IDs are full HTTPS URLs that may contain special characters requiring URL encoding when used in HTTP requests.
+
+**Automatic Handling:**
+- **Frontend**: Automatically URL-encodes entity IDs using `encodeURIComponent()` when making API calls
+- **Backend**: Automatically URL-decodes entity IDs from query parameters and path segments using `unquote()`
+- **Database**: Stores entity IDs in their original, unencoded form (e.g., `https://op.example.com/auth`)
+
+**When URL Encoding is Required:**
+Entity IDs containing any of these characters need encoding:
+- Paths: `https://op.example.com/auth`
+- Query parameters: `https://op.example.com?client_id=test`
+- Port numbers: `https://op.example.com:8443`
+- Fragments: `https://op.example.com#section`
+
+**Examples:**
+```bash
+# Entity ID without special characters (encoding optional)
+https://op.example.com
+
+# Entity ID with path (must be encoded)
+https://op.example.com/auth  →  https%3A%2F%2Fop.example.com%2Fauth
+
+# Entity ID with query parameter (must be encoded)
+https://op.example.com?id=123  →  https%3A%2F%2Fop.example.com%3Fid%3D123
+```
+
+**Using curl with URL encoding:**
+```bash
+# Option 1: Manual encoding
+curl "http://localhost:5000/fetch?sub=https%3A%2F%2Fop.example.com%2Fauth"
+
+# Option 2: Let curl encode (recommended)
+curl -G http://localhost:5000/fetch --data-urlencode "sub=https://op.example.com/auth"
 ```
 
 ## Architecture
