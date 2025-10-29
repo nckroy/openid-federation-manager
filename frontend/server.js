@@ -97,7 +97,9 @@ app.post('/register', async (req, res) => {
 app.get('/entity/:entityId(*)', async (req, res) => {
     try {
         const entityId = req.params.entityId;
-        const response = await axios.get(`${API_URL}/entity/${entityId}`);
+        // URL-encode the entity ID for the API request
+        const encodedEntityId = encodeURIComponent(entityId);
+        const response = await axios.get(`${API_URL}/entity/${encodedEntityId}`);
 
         res.render('entity-details', {
             entity: response.data,
@@ -149,7 +151,9 @@ app.get('/api/entities', async (req, res) => {
 app.get('/api/entity/:entityId(*)', async (req, res) => {
     try {
         const entityId = req.params.entityId;
-        const response = await axios.get(`${API_URL}/entity/${entityId}`);
+        // URL-encode the entity ID for the API request
+        const encodedEntityId = encodeURIComponent(entityId);
+        const response = await axios.get(`${API_URL}/entity/${encodedEntityId}`);
         res.json(response.data);
     } catch (error) {
         res.status(error.response?.status || 500).json({

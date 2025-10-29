@@ -2,6 +2,7 @@
 # Licensed under the Apache License, Version 2.0 - see LICENSE file for details
 
 from flask import Flask, request, jsonify, Response
+from urllib.parse import unquote, quote
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -102,17 +103,20 @@ def register_entity():
     return jsonify({
         'status': 'registered',
         'entity_id': entity_id,
-        'fetch_endpoint': f'{Config.FEDERATION_ENTITY_ID}/fetch?sub={entity_id}'
+        'fetch_endpoint': f'{Config.FEDERATION_ENTITY_ID}/fetch?sub={quote(entity_id, safe="")}'
     }), 201
 
 @app.route('/fetch', methods=['GET'])
 def fetch_entity():
     """Fetch endpoint - return subordinate statement for an entity"""
     subject = request.args.get('sub')
-    
+
     if not subject:
         return jsonify({'error': 'sub parameter required'}), 400
-    
+
+    # Decode URL-encoded entity ID (e.g., https%3A%2F%2Fop.example.com -> https://op.example.com)
+    subject = unquote(subject)
+
     # Check if entity is registered
     entity = federation_manager.get_entity(subject)
     
@@ -155,10 +159,13 @@ def list_entities():
 @app.route('/entity/<path:entity_id>', methods=['GET'])
 def get_entity_info(entity_id):
     """Get information about a specific entity"""
+    # Decode URL-encoded entity ID
+    entity_id = unquote(entity_id)
+
     # Ensure entity_id starts with http:// or https://
     if not entity_id.startswith('http'):
         entity_id = 'https://' + entity_id
-    
+
     entity = federation_manager.get_entity(entity_id)
     
     if not entity:
