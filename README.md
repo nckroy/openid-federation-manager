@@ -22,8 +22,13 @@ A lightweight Python application to manage an OpenID Federation (draft 44) as an
 
 ## Prerequisites
 
+### Backend
 - **Python 3.8+**
 - **pip** (Python package manager)
+
+### Frontend
+- **Node.js 18+**
+- **npm** (Node package manager)
 
 ## Installation
 
@@ -107,13 +112,229 @@ The server will start on `http://0.0.0.0:5000` (or your configured host/port).
 
 ### Running in Development Container
 
-If you're using the development container, simply open the integrated terminal in VS Code and run:
+If you're using the development container, the backend and frontend services are pre-configured. Simply open the integrated terminal in VS Code and run:
 
+**Backend:**
 ```bash
 python3 backend/python/app.py
 ```
 
-All dependencies are pre-installed, and ports 5000 and 5001 are automatically forwarded to your host machine.
+**Frontend (in a separate terminal):**
+```bash
+cd frontend && npm start
+```
+
+All dependencies are pre-installed, and ports 3000, 5000, and 5001 are automatically forwarded to your host machine.
+
+## Running the Frontend
+
+The OpenID Federation Manager includes a web-based user interface built with Node.js and Express. The frontend provides a dashboard, entity management, registration forms, and federation information displays.
+
+### Frontend Architecture
+
+- **Express Server** (`frontend/server.js`) - Web UI server that proxies API requests to the backend
+- **EJS Templates** (`frontend/views/`) - Server-side rendered HTML pages
+- **Static Assets** (`frontend/public/`) - CSS and client-side JavaScript
+- **Pages**: Dashboard, entity list, registration form, entity details, federation info
+
+### Option 1: Running Frontend in Development Container
+
+**Prerequisites:**
+- Development container already set up (see "Option 1: Development Container" above)
+- Backend service running on port 5000
+
+**Steps:**
+
+1. Open a terminal in VS Code (inside the dev container)
+
+2. Start the backend service (if not already running):
+   ```bash
+   python3 backend/python/app.py
+   ```
+
+3. In a **separate terminal**, start the frontend:
+   ```bash
+   cd frontend
+   npm start
+   ```
+
+4. Access the web UI at http://localhost:3000
+
+**Environment Variables (Dev Container):**
+These are pre-configured in `.devcontainer/docker-compose.yml`:
+- `PORT=3000` - Frontend server port
+- `API_URL=http://backend:5000` - Backend API endpoint (uses Docker network)
+- `NODE_ENV=development` - Development mode
+
+### Option 2: Running Frontend Locally
+
+**Prerequisites:**
+- Node.js 18+ and npm installed
+- Backend service running (see "Option 2: Local Installation" above)
+
+**Steps:**
+
+1. Navigate to the frontend directory:
+   ```bash
+   cd frontend
+   ```
+
+2. Install dependencies (first time only):
+   ```bash
+   npm install
+   ```
+
+3. Configure environment variables (optional):
+   ```bash
+   # Create .env file in frontend directory
+   PORT=3000
+   API_URL=http://localhost:5000
+   NODE_ENV=development
+   ```
+
+4. Start the frontend server:
+   ```bash
+   npm start
+   ```
+
+5. Access the web UI at http://localhost:3000
+
+**Configuration Options:**
+
+You can override default settings using environment variables:
+
+```bash
+# Run on custom port with custom backend URL
+PORT=3001 API_URL=http://localhost:5001 npm start
+```
+
+- `PORT` - Frontend server port (default: `3000`)
+- `API_URL` - Backend API URL (default: `http://localhost:5000`)
+- `NODE_ENV` - Environment mode (default: `development`)
+
+### Option 3: Running Frontend with Docker Compose
+
+**Prerequisites:**
+- Docker and Docker Compose installed
+- Backend service container running
+
+**Steps:**
+
+1. Start all services using Docker Compose:
+   ```bash
+   docker-compose -f .devcontainer/docker-compose.yml up
+   ```
+
+   Or start services individually:
+   ```bash
+   # Start backend
+   docker-compose -f .devcontainer/docker-compose.yml up backend
+
+   # Start frontend (in separate terminal)
+   docker-compose -f .devcontainer/docker-compose.yml up frontend
+   ```
+
+2. Access the web UI at http://localhost:3000
+
+**Docker Compose Features:**
+- **Multi-service architecture** - Backend, frontend, and app containers
+- **Automatic dependency management** - Frontend waits for backend health check
+- **Inter-service networking** - Containers communicate via `federation-network`
+- **Health checks** - Ensures services start in correct order
+- **Volume mounting** - Source code mounted for live development
+- **Node modules caching** - Faster rebuilds and better performance
+
+**View logs:**
+```bash
+# All services
+docker-compose -f .devcontainer/docker-compose.yml logs -f
+
+# Specific service
+docker-compose -f .devcontainer/docker-compose.yml logs -f frontend
+docker-compose -f .devcontainer/docker-compose.yml logs -f backend
+```
+
+**Stop services:**
+```bash
+docker-compose -f .devcontainer/docker-compose.yml down
+```
+
+### Frontend Features
+
+The web interface provides:
+
+1. **Dashboard** (`/`) - Overview of registered entities and federation statistics
+2. **Entity List** (`/entities`) - Browse and filter registered OPs and RPs
+3. **Registration** (`/register`) - Register new entities with the federation
+4. **Entity Details** (`/entity/:entityId`) - View detailed entity information, metadata, and JWKS
+5. **Federation Info** (`/federation`) - View federation entity statement and configuration
+
+### Testing the Frontend
+
+**Access the UI:**
+```bash
+# Default URL
+open http://localhost:3000
+
+# Or with curl
+curl http://localhost:3000/health
+```
+
+**Frontend API Endpoints:**
+- `GET /` - Dashboard page
+- `GET /entities` - Entity list page with filtering
+- `GET /register` - Entity registration form
+- `POST /register` - Submit entity registration (proxies to backend)
+- `GET /entity/:entityId` - Entity details page
+- `GET /federation` - Federation information page
+- `GET /health` - Frontend health check
+
+### Troubleshooting Frontend
+
+**Port 3000 Already in Use:**
+```bash
+# Option 1: Use a different port
+PORT=3001 npm start
+
+# Option 2: Kill the process using port 3000
+lsof -ti:3000 | xargs kill
+```
+
+**Frontend Can't Connect to Backend:**
+1. Verify backend is running:
+   ```bash
+   curl http://localhost:5000/health
+   ```
+
+2. Check `API_URL` environment variable:
+   ```bash
+   echo $API_URL
+   ```
+
+3. For Docker environments, use service name instead of localhost:
+   ```bash
+   # In docker-compose environments
+   API_URL=http://backend:5000
+   ```
+
+**Dependencies Not Installing:**
+```bash
+# Clear npm cache and reinstall
+cd frontend
+rm -rf node_modules package-lock.json
+npm install
+```
+
+**Docker Network Issues:**
+
+If frontend can't reach backend in Docker:
+```bash
+# Verify network connectivity
+docker-compose -f .devcontainer/docker-compose.yml exec frontend ping backend
+
+# Check backend is healthy
+docker-compose -f .devcontainer/docker-compose.yml exec backend curl http://localhost:5000/health
+```
 
 ## Usage
 
