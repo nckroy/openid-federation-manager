@@ -522,8 +522,100 @@ The project includes a complete Docker Compose-based multi-service development e
 - If you prefer managing Python/Node.js environments locally
 - For production deployments (use local installation or separate production containers)
 
+## Development Workflow
+
+### Feature Branch Strategy
+
+As the project grows in complexity, we use feature branches and pull requests for all new development:
+
+**Branch Naming Convention:**
+- `feature/<description>` - New features (e.g., `feature/trust-marks`)
+- `fix/<description>` - Bug fixes (e.g., `fix/registration-error`)
+- `docs/<description>` - Documentation updates (e.g., `docs/api-examples`)
+- `refactor/<description>` - Code refactoring (e.g., `refactor/validation-logic`)
+
+**Workflow Steps:**
+
+1. **Create a feature branch from main:**
+   ```bash
+   git checkout main
+   git pull origin main
+   git checkout -b feature/my-new-feature
+   ```
+
+2. **Make your changes and commit regularly:**
+   ```bash
+   # Make changes to files
+   git add <files>
+   git commit -m "Descriptive commit message"
+   ```
+
+3. **Keep your branch updated with main:**
+   ```bash
+   git fetch origin
+   git rebase origin/main
+   # Or merge if you prefer:
+   # git merge origin/main
+   ```
+
+4. **Push your feature branch:**
+   ```bash
+   git push origin feature/my-new-feature
+   ```
+
+5. **Create a pull request on GitHub:**
+   - Navigate to the repository on GitHub
+   - Click "Pull requests" → "New pull request"
+   - Select your feature branch as the source
+   - Fill out the PR template with description, testing notes, and checklist
+   - Request review from maintainers
+
+6. **Address review feedback:**
+   ```bash
+   # Make requested changes
+   git add <files>
+   git commit -m "Address review feedback"
+   git push origin feature/my-new-feature
+   ```
+
+7. **After approval, maintainer merges PR:**
+   - Squash and merge (preferred for clean history)
+   - Or regular merge (preserves all commits)
+
+8. **Clean up after merge:**
+   ```bash
+   git checkout main
+   git pull origin main
+   git branch -d feature/my-new-feature
+   ```
+
+**Pull Request Guidelines:**
+
+- **Title**: Clear, concise description of the change
+- **Description**: Explain what, why, and how
+- **Testing**: Document how you tested the changes
+- **Breaking Changes**: Call out any breaking changes
+- **Related Issues**: Link to any related issues (e.g., "Fixes #123")
+
+**When to Create a PR:**
+
+- Adding new features
+- Fixing bugs
+- Refactoring existing code
+- Updating documentation (for significant changes)
+- Making breaking changes
+
+**Direct Commits to Main (Avoid):**
+
+Only for:
+- Critical hotfixes (with immediate follow-up PR for review)
+- Minor typo fixes in documentation
+- Emergency security patches
+
 ## Repository Information
 
 - **GitHub**: https://github.com/nckroy/openid-federation-manager
 - **License**: Apache License 2.0
 - **Copyright**: Internet2 (2025)
+- **Default Branch**: `main`
+- **Development Model**: Feature branches with pull requests
