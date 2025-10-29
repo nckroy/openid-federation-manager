@@ -512,7 +512,7 @@ Validation rules are automatically applied during entity registration. If an ent
 openid-federation-manager/
 ├── backend/
 │   └── python/
-│       ├── app.py                    # Flask application
+│       ├── app.py                    # Flask API server
 │       ├── federation_manager.py     # Core federation logic
 │       ├── entity_statement.py       # Entity statement handling
 │       └── requirements.txt          # Python dependencies
@@ -520,22 +520,24 @@ openid-federation-manager/
 │   ├── server.js                     # Express web server
 │   ├── package.json                  # Node.js dependencies
 │   ├── views/                        # EJS templates
-│   │   ├── layout.ejs
-│   │   ├── index.ejs
-│   │   ├── entities.ejs
-│   │   ├── register.ejs
-│   │   ├── entity-details.ejs
-│   │   └── federation.ejs
+│   │   ├── layout.ejs                # Base template with navigation
+│   │   ├── index.ejs                 # Dashboard page
+│   │   ├── entities.ejs              # Entity list page
+│   │   ├── register.ejs              # Entity registration form
+│   │   ├── entity-details.ejs        # Entity details page
+│   │   ├── federation.ejs            # Federation info page
+│   │   └── validation-rules.ejs      # Validation rules management
 │   └── public/                       # Static assets
-│       ├── css/style.css
-│       └── js/main.js
+│       ├── css/style.css             # Application styles
+│       └── js/main.js                # Client-side JavaScript
 ├── config/
 │   └── config.py                     # Configuration management
 ├── database/
-│   └── schema.sql                    # Database schema
+│   └── schema.sql                    # Database schema (5 tables)
 ├── tests/
 │   ├── backend/                      # Python backend tests
 │   │   ├── test_federation_manager.py
+│   │   ├── test_validation_rules.py  # Validation rules tests
 │   │   └── test_api.py
 │   ├── frontend/                     # Node.js frontend tests
 │   │   ├── test_server.js
@@ -545,13 +547,17 @@ openid-federation-manager/
 │   │   └── docker-compose.test.yml
 │   └── README.md                     # Testing documentation
 ├── .devcontainer/                    # Multi-service dev environment
-│   ├── devcontainer.json
-│   ├── docker-compose.yml
+│   ├── devcontainer.json             # VS Code dev container config
+│   ├── docker-compose.yml            # Multi-service orchestration
 │   ├── Dockerfile                    # Main dev container
-│   ├── Dockerfile.backend            # Backend service
-│   ├── Dockerfile.frontend           # Frontend service
-│   └── README.md
+│   ├── Dockerfile.backend            # Backend service container
+│   ├── Dockerfile.frontend           # Frontend service container
+│   └── README.md                     # Dev container documentation
+├── .github/
+│   └── pull_request_template.md      # PR template for contributions
 ├── CLAUDE.md                         # Development documentation
+├── CONTRIBUTING.md                   # Contributor guidelines
+├── LICENSE                           # Apache License 2.0
 └── README.md                         # This file
 ```
 
@@ -655,7 +661,33 @@ Ensure the entity you're registering has a valid `.well-known/openid-federation`
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit issues or pull requests.
+Contributions are welcome! This project uses a feature branch workflow with pull requests for all changes.
+
+**Quick Start:**
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/my-feature`
+3. Make your changes following the coding standards
+4. Write/update tests
+5. Submit a pull request
+
+**Documentation:**
+- See [CONTRIBUTING.md](CONTRIBUTING.md) for complete contributor guidelines
+- See [CLAUDE.md](CLAUDE.md) for development workflow and technical details
+- Use the [pull request template](.github/pull_request_template.md) when submitting PRs
+
+**Branch Naming:**
+- `feature/` - New features
+- `fix/` - Bug fixes
+- `docs/` - Documentation updates
+- `refactor/` - Code refactoring
+
+**Requirements:**
+- Follow project coding standards (Python: PEP 8, Black, Flake8; JavaScript: ES6+)
+- Add tests for new functionality
+- Update documentation as needed
+- All tests must pass before PR approval
+
+Please review [CONTRIBUTING.md](CONTRIBUTING.md) before submitting your first contribution.
 
 ## License
 
