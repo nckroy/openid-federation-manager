@@ -65,21 +65,21 @@ The project includes a Docker Compose-based multi-service development environmen
 3. Wait for all containers to build and dependencies to install
 4. **Services auto-start automatically!** Access immediately:
    - Frontend UI: http://localhost:3000
-   - Backend API: http://localhost:5000
+   - Backend API: http://localhost:5001
 
 **Multi-Service Architecture:**
-- **Backend Container**: Python 3.11 with Flask API (ports 5000, 5001) - **auto-starts on container launch**
-- **Frontend Container**: Node.js 18 with Express UI (port 3000) - **auto-starts on container launch**
+- **Backend Container**: Python 3.11 with Flask API (ports 5001, 5002) - **auto-starts on container launch**
+- **Frontend Container**: Node.js 20 LTS with Express UI (port 3000) - **auto-starts on container launch**
 - **App Container**: Main development workspace with both Python and Node.js tools
 - All services connected via Docker network for inter-service communication
 - Health checks ensure services start in correct order
 
 **Features:**
-- Python 3.11 and Node.js 18 pre-installed
+- Python 3.11 and Node.js 20 LTS pre-installed
 - All dependencies auto-installed (Python + Node.js)
 - **Backend and frontend auto-start on container open** - no manual startup needed
 - Services immediately accessible from local browser
-- Ports 3000, 5000, and 5001 auto-forwarded to host machine
+- Ports 3000, 5001, and 5002 auto-forwarded to host machine
 - Persistent bash history
 - Node modules cached for performance
 - VS Code extensions (Pylance, Black, Flake8)
@@ -200,7 +200,7 @@ Keys are persisted in the `signing_keys` table and automatically loaded on start
 - `get_jwks()` → `Dict` - Returns JWKS with 'keys' array
 - `register_entity(entity_id, entity_type, metadata, jwks)` → `bool` - Returns success status
 - `get_entity(entity_id)` → `Optional[Dict]` - Returns entity dict or None
-- `list_entities(entity_type=None)` → `List[str]` - Returns list of entity IDs
+- `list_entities(entity_type=None)` → `List[Dict]` - Returns list of entity objects with entity_id, entity_type, status, and registered_at
 - `store_entity_statement(entity_id, issuer, subject, statement, expires_at)` → `None`
 - `get_entity_statement(subject)` → `Optional[str]` - Returns JWT string or None if not found/expired
 - `create_validation_rule(rule_name, entity_type, field_path, validation_type, validation_value, error_message)` → `bool`
@@ -508,12 +508,12 @@ The project includes a complete Docker Compose-based multi-service development e
 
 **What's Included:**
 - **Backend Container**: Python 3.11 with Flask and all dependencies - **auto-starts on launch**
-- **Frontend Container**: Node.js 18 with Express and all dependencies - **auto-starts on launch**
+- **Frontend Container**: Node.js 20 LTS with Express and all dependencies - **auto-starts on launch**
 - **App Container**: Combined workspace with both Python and Node.js tools
 - Git, SQLite3, and build tools
 - VS Code extensions for Python and JavaScript development
 - Pre-configured environment variables for all services
-- Automatic port forwarding (3000, 5000, 5001) to host machine
+- Automatic port forwarding (3000, 5001, 5002) to host machine
 - Persistent bash history
 - Docker networking for inter-service communication
 - Health checks for all services
