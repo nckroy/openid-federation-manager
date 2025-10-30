@@ -197,24 +197,37 @@ class FederationManager:
         
         return None
     
-    def list_entities(self, entity_type: Optional[str] = None) -> List[str]:
+    def list_entities(self, entity_type: Optional[str] = None) -> List[Dict]:
         """List all registered entities"""
         conn = self.get_connection()
         cursor = conn.cursor()
-        
+
         if entity_type:
             cursor.execute('''
-                SELECT entity_id FROM entities 
+                SELECT entity_id, entity_type, status, registered_at
+                FROM entities
                 WHERE entity_type = ? AND status = 'active'
+                ORDER BY registered_at DESC
             ''', (entity_type,))
         else:
             cursor.execute('''
-                SELECT entity_id FROM entities WHERE status = 'active'
+                SELECT entity_id, entity_type, status, registered_at
+                FROM entities
+                WHERE status = 'active'
+                ORDER BY registered_at DESC
             ''')
-        
-        entities = [row['entity_id'] for row in cursor.fetchall()]
+
+        entities = []
+        for row in cursor.fetchall():
+            entities.append({
+                'entity_id': row['entity_id'],
+                'entity_type': row['entity_type'],
+                'status': row['status'],
+                'registered_at': row['registered_at']
+            })
+
         conn.close()
-        
+
         return entities
     
     def store_entity_statement(self, entity_id: str, issuer: str, 

@@ -39,21 +39,21 @@ const body = `
         ${entity.metadata ? `
             <div class="metadata-card">
                 <h3>Metadata</h3>
-                <pre class="code-block">${JSON.stringify(JSON.parse(entity.metadata), null, 2)}</pre>
+                <pre class="code-block">${JSON.stringify(entity.metadata, null, 2)}</pre>
             </div>
         ` : ''}
 
         ${entity.jwks ? `
             <div class="jwks-card">
                 <h3>JSON Web Key Set (JWKS)</h3>
-                <pre class="code-block">${JSON.stringify(JSON.parse(entity.jwks), null, 2)}</pre>
+                <pre class="code-block">${JSON.stringify(entity.jwks, null, 2)}</pre>
             </div>
         ` : ''}
 
         ${entity.authority_hints ? `
             <div class="authority-card">
                 <h3>Authority Hints</h3>
-                <pre class="code-block">${JSON.stringify(JSON.parse(entity.authority_hints), null, 2)}</pre>
+                <pre class="code-block">${JSON.stringify(entity.authority_hints, null, 2)}</pre>
             </div>
         ` : ''}
 
