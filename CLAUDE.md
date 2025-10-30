@@ -2,6 +2,49 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## ⚠️ CRITICAL: Always Use Feature Branches
+
+**NEVER commit directly to the `main` branch unless explicitly instructed.**
+
+For ALL development work, you MUST:
+
+1. **Create a feature branch** with appropriate naming:
+   - `feature/<description>` for new features
+   - `fix/<description>` for bug fixes
+   - `docs/<description>` for documentation
+   - `refactor/<description>` for refactoring
+
+2. **Commit all changes to the feature branch**
+
+3. **Push the feature branch to remote**
+
+4. **Create a pull request** for review before merging to main
+
+**Example workflow:**
+```bash
+# Create feature branch
+git checkout -b feature/test-suite-implementation
+
+# Make changes and commit
+git add .
+git commit -m "Add comprehensive test suite"
+
+# Push feature branch
+git push origin feature/test-suite-implementation
+
+# Create PR (use gh cli or GitHub UI)
+gh pr create --title "Add comprehensive test suite" --body "Details..."
+```
+
+**Only commit directly to main for:**
+- Emergency hotfixes (with immediate follow-up PR)
+- Critical security patches
+- Minor typo fixes in documentation
+
+See "Development Workflow" section below for complete details.
+
+---
+
 ## Project Overview
 
 OpenID Federation Manager is a Python/Flask application implementing OpenID Federation (draft 44) as an intermediate entity/federation operator. It manages registration and entity statements for OpenID Providers (OP) and Relying Parties (RP) in a federation.
