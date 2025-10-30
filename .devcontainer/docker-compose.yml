@@ -17,8 +17,8 @@ services:
       # Persist bash history
       - devcontainer-bashhistory:/commandhistory
 
-    # Overrides default command so things don't shut down after the process ends
-    command: sleep infinity
+    # Start the Flask backend automatically
+    command: /bin/bash -c "cd /workspace && python3 backend/python/app.py"
 
     # Environment variables
     environment:
@@ -57,8 +57,8 @@ services:
       # Cache node_modules for performance
       - frontend-node-modules:/workspace/frontend/node_modules
 
-    # Overrides default command so things don't shut down after the process ends
-    command: sleep infinity
+    # Start the Express frontend automatically
+    command: /bin/bash -c "cd /workspace/frontend && npm start"
 
     # Environment variables
     environment:

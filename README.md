@@ -114,19 +114,28 @@ The server will start on `http://0.0.0.0:5000` (or your configured host/port).
 
 ### Running in Development Container
 
-If you're using the development container, the backend and frontend services are pre-configured. Simply open the integrated terminal in VS Code and run:
+If you're using the development container, the backend and frontend services **auto-start automatically** when the container opens. You can immediately access:
 
-**Backend:**
+- **Frontend UI**: http://localhost:3000
+- **Backend API**: http://localhost:5000
+
+All dependencies are pre-installed, services start automatically, and ports 3000, 5000, and 5001 are automatically forwarded to your host machine.
+
+**To view service logs:**
 ```bash
-python3 backend/python/app.py
+docker logs -f openid-federation-manager-backend-1
+docker logs -f openid-federation-manager-frontend-1
 ```
 
-**Frontend (in a separate terminal):**
+**To manually restart services (if needed):**
 ```bash
-cd frontend && npm start
-```
+# Restart all services
+docker-compose -f .devcontainer/docker-compose.yml restart
 
-All dependencies are pre-installed, and ports 3000, 5000, and 5001 are automatically forwarded to your host machine.
+# Restart specific service
+docker-compose -f .devcontainer/docker-compose.yml restart backend
+docker-compose -f .devcontainer/docker-compose.yml restart frontend
+```
 
 ## Running the Frontend
 
@@ -143,30 +152,26 @@ The OpenID Federation Manager includes a web-based user interface built with Nod
 
 **Prerequisites:**
 - Development container already set up (see "Option 1: Development Container" above)
-- Backend service running on port 5000
 
 **Steps:**
 
-1. Open a terminal in VS Code (inside the dev container)
-
-2. Start the backend service (if not already running):
-   ```bash
-   python3 backend/python/app.py
-   ```
-
-3. In a **separate terminal**, start the frontend:
-   ```bash
-   cd frontend
-   npm start
-   ```
-
-4. Access the web UI at http://localhost:3000
+1. Open the project in VS Code with Dev Containers extension
+2. Press `F1` → "Dev Containers: Reopen in Container"
+3. Wait for the container to build
+4. **Both backend and frontend auto-start automatically!**
+5. Access the web UI at http://localhost:3000
 
 **Environment Variables (Dev Container):**
 These are pre-configured in `.devcontainer/docker-compose.yml`:
 - `PORT=3000` - Frontend server port
 - `API_URL=http://backend:5000` - Backend API endpoint (uses Docker network)
 - `NODE_ENV=development` - Development mode
+
+**Services are immediately accessible:**
+- Frontend UI: http://localhost:3000
+- Backend API: http://localhost:5000
+
+No manual service startup required!
 
 ### Option 2: Running Frontend Locally
 
@@ -218,7 +223,6 @@ PORT=3001 API_URL=http://localhost:5001 npm start
 
 **Prerequisites:**
 - Docker and Docker Compose installed
-- Backend service container running
 
 **Steps:**
 
@@ -226,6 +230,10 @@ PORT=3001 API_URL=http://localhost:5001 npm start
    ```bash
    docker-compose -f .devcontainer/docker-compose.yml up
    ```
+
+   Services will auto-start and be immediately accessible:
+   - Frontend UI: http://localhost:3000
+   - Backend API: http://localhost:5000
 
    Or start services individually:
    ```bash
@@ -236,15 +244,15 @@ PORT=3001 API_URL=http://localhost:5001 npm start
    docker-compose -f .devcontainer/docker-compose.yml up frontend
    ```
 
-2. Access the web UI at http://localhost:3000
-
 **Docker Compose Features:**
 - **Multi-service architecture** - Backend, frontend, and app containers
+- **Auto-start on container launch** - Services start automatically, no manual startup needed
 - **Automatic dependency management** - Frontend waits for backend health check
 - **Inter-service networking** - Containers communicate via `federation-network`
 - **Health checks** - Ensures services start in correct order
 - **Volume mounting** - Source code mounted for live development
 - **Node modules caching** - Faster rebuilds and better performance
+- **Immediate browser access** - Services accessible at localhost via port forwarding
 
 **View logs:**
 ```bash

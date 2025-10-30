@@ -58,23 +58,18 @@ SQLite database (`database/schema.sql`) with five main tables:
 
 #### Using Development Container (Recommended)
 
-The project includes a Docker Compose-based multi-service development environment:
+The project includes a Docker Compose-based multi-service development environment with **auto-starting services**:
 
 1. Open project in VS Code
 2. Press `F1` → "Dev Containers: Reopen in Container"
 3. Wait for all containers to build and dependencies to install
-4. Run the services:
-   ```bash
-   # Start backend (from app container terminal)
-   python3 backend/python/app.py
-
-   # Start frontend (in a separate terminal)
-   cd frontend && npm start
-   ```
+4. **Services auto-start automatically!** Access immediately:
+   - Frontend UI: http://localhost:3000
+   - Backend API: http://localhost:5000
 
 **Multi-Service Architecture:**
-- **Backend Container**: Python 3.11 with Flask API (ports 5000, 5001)
-- **Frontend Container**: Node.js 18 with Express UI (port 3000)
+- **Backend Container**: Python 3.11 with Flask API (ports 5000, 5001) - **auto-starts on container launch**
+- **Frontend Container**: Node.js 18 with Express UI (port 3000) - **auto-starts on container launch**
 - **App Container**: Main development workspace with both Python and Node.js tools
 - All services connected via Docker network for inter-service communication
 - Health checks ensure services start in correct order
@@ -82,7 +77,9 @@ The project includes a Docker Compose-based multi-service development environmen
 **Features:**
 - Python 3.11 and Node.js 18 pre-installed
 - All dependencies auto-installed (Python + Node.js)
-- Ports 3000, 5000, and 5001 auto-forwarded
+- **Backend and frontend auto-start on container open** - no manual startup needed
+- Services immediately accessible from local browser
+- Ports 3000, 5000, and 5001 auto-forwarded to host machine
 - Persistent bash history
 - Node modules cached for performance
 - VS Code extensions (Pylance, Black, Flake8)
@@ -91,6 +88,13 @@ The project includes a Docker Compose-based multi-service development environmen
 - Backend: `PYTHONPATH=/workspace`, `API_PORT=5000`
 - Frontend: `API_URL=http://backend:5000`, `PORT=3000`
 - Frontend connects to backend via Docker network using service name `backend`
+
+**Viewing Service Logs:**
+```bash
+# From host machine or within any container terminal
+docker logs -f openid-federation-manager-backend-1
+docker logs -f openid-federation-manager-frontend-1
+```
 
 See `.devcontainer/README.md` for detailed multi-service setup documentation.
 
@@ -503,30 +507,34 @@ The project includes a complete Docker Compose-based multi-service development e
 - `.devcontainer/README.md` - Detailed multi-service documentation
 
 **What's Included:**
-- **Backend Container**: Python 3.11 with Flask and all dependencies
-- **Frontend Container**: Node.js 18 with Express and all dependencies
+- **Backend Container**: Python 3.11 with Flask and all dependencies - **auto-starts on launch**
+- **Frontend Container**: Node.js 18 with Express and all dependencies - **auto-starts on launch**
 - **App Container**: Combined workspace with both Python and Node.js tools
 - Git, SQLite3, and build tools
 - VS Code extensions for Python and JavaScript development
 - Pre-configured environment variables for all services
-- Automatic port forwarding (3000, 5000, 5001)
+- Automatic port forwarding (3000, 5000, 5001) to host machine
 - Persistent bash history
 - Docker networking for inter-service communication
 - Health checks for all services
 
 **Architecture Benefits:**
 - Services run in isolation but can communicate
+- **Services auto-start when container opens** - immediate browser access
 - Frontend automatically connects to backend via Docker network
 - Each service has optimized dependencies
 - Node modules cached for better performance
-- Services can be started/stopped independently
+- Services accessible from local browser via localhost
+- No manual service startup required
 
 **When to Use:**
 - Recommended for all new developers
 - Ensures consistent full-stack environment across platforms
 - No local Python/Node.js/dependency management needed
+- **Fastest onboarding** - services auto-start, immediately accessible from browser
 - Faster onboarding for full-stack development
 - Testing inter-service communication
+- Preferred for development with instant browser access
 
 **When Not to Use:**
 - If Docker Desktop is not available
