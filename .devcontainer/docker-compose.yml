@@ -1,8 +1,6 @@
 # Copyright (c) 2025 Internet2
 # Licensed under the Apache License, Version 2.0 - see LICENSE file for details
 
-version: '3.8'
-
 services:
   # Backend Python/Flask service
   backend:
@@ -30,8 +28,8 @@ services:
       - PYTHONPATH=/workspace
 
     ports:
-      - "5000:5000"
-      - "5001:5001"
+      - "5001:5000"  # Map host port 5001 to container port 5000
+      - "5002:5001"  # Map host port 5002 to container port 5001
 
     networks:
       - federation-network
@@ -63,7 +61,7 @@ services:
     # Environment variables
     environment:
       - PORT=3000
-      - API_URL=http://backend:5000
+      - API_URL=http://backend:5000  # Internal Docker network uses container port
       - NODE_ENV=development
 
     ports:

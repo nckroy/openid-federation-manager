@@ -1,7 +1,7 @@
 # Copyright (c) 2025 Internet2
 # Licensed under the Apache License, Version 2.0 - see LICENSE file for details
 
-FROM node:18-slim
+FROM node:20-slim
 
 # Install system dependencies
 RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
@@ -13,12 +13,13 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user
+# Note: node:18-slim already has 'node' user (UID 1000) and 'node' group (GID 1000)
+# We'll rename the existing 'node' user to 'vscode' and reuse it
 ARG USERNAME=vscode
-ARG USER_UID=1000
-ARG USER_GID=$USER_UID
 
-RUN groupadd --gid $USER_GID $USERNAME \
-    && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME \
+RUN usermod -l $USERNAME node \
+    && groupmod -n $USERNAME node \
+    && usermod -d /home/$USERNAME -m $USERNAME \
     && apt-get update \
     && apt-get install -y sudo \
     && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
