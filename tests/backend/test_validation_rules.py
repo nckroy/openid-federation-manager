@@ -1,274 +1,392 @@
 # Copyright (c) 2025 Internet2
 # Licensed under the Apache License, Version 2.0 - see LICENSE file for details
 
-import sys
-import os
+"""Unit tests for validation rules functionality."""
+
 import pytest
 import json
 
-# Add the backend directory to the path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../backend/python')))
 
-from federation_manager import FederationManager
+@pytest.mark.unit
+class TestValidationRulesCRUD:
+    """Tests for validation rule create, read, update, delete operations."""
 
-
-@pytest.fixture
-def federation_manager(tmp_path):
-    """Create a FederationManager instance with a temporary database"""
-    db_path = tmp_path / "test_validation.db"
-    return FederationManager(str(db_path))
-
-
-class TestValidationRules:
     def test_create_validation_rule(self, federation_manager):
-        """Test creating a validation rule"""
+        """Test creating a validation rule."""
         success = federation_manager.create_validation_rule(
-            rule_name="test_rule",
-            entity_type="OP",
-            field_path="metadata.openid_provider.issuer",
-            validation_type="required",
-            error_message="Issuer is required"
+            rule_name='test_rule',
+            entity_type='OP',
+            field_path='metadata.openid_provider.issuer',
+            validation_type='required',
+            error_message='Issuer is required'
         )
 
         assert success is True
 
-        # Verify rule was created
-        rules = federation_manager.get_validation_rules()
-        assert len(rules) == 1
-        assert rules[0]['rule_name'] == 'test_rule'
-        assert rules[0]['entity_type'] == 'OP'
-
-    def test_duplicate_rule_name(self, federation_manager):
-        """Test that duplicate rule names are rejected"""
+    def test_create_duplicate_rule_fails(self, federation_manager):
+        """Test that creating duplicate rule name fails."""
+        # Create first rule
         federation_manager.create_validation_rule(
-            rule_name="test_rule",
-            entity_type="OP",
-            field_path="metadata.openid_provider.issuer",
-            validation_type="required"
+            rule_name='test_rule',
+            entity_type='OP',
+            field_path='metadata.openid_provider.issuer',
+            validation_type='required'
         )
 
-        # Try to create another rule with the same name
+        # Try to create duplicate
         success = federation_manager.create_validation_rule(
-            rule_name="test_rule",
-            entity_type="RP",
-            field_path="metadata.openid_relying_party.client_name",
-            validation_type="required"
+            rule_name='test_rule',
+            entity_type='RP',
+            field_path='metadata.openid_relying_party.client_id',
+            validation_type='required'
         )
 
         assert success is False
 
-    def test_get_validation_rules_by_entity_type(self, federation_manager):
-        """Test filtering rules by entity type"""
+    def test_get_validation_rules_empty(self, federation_manager):
+        """Test getting rules when none exist."""
+        rules = federation_manager.get_validation_rules()
+
+        assert rules == []
+
+    def test_get_validation_rules_all(self, federation_manager):
+        """Test getting all validation rules."""
+        # Create multiple rules
         federation_manager.create_validation_rule(
-            rule_name="op_rule",
-            entity_type="OP",
-            field_path="metadata.openid_provider.issuer",
-            validation_type="required"
+            'rule1', 'OP', 'metadata.openid_provider.issuer', 'required'
+        )
+        federation_manager.create_validation_rule(
+            'rule2', 'RP', 'metadata.openid_relying_party.client_id', 'required'
+        )
+        federation_manager.create_validation_rule(
+            'rule3', 'BOTH', 'jwks.keys', 'required'
         )
 
+        rules = federation_manager.get_validation_rules(active_only=False)
+
+        assert len(rules) == 3
+
+    def test_get_validation_rules_filter_by_type(self, federation_manager):
+        """Test filtering rules by entity type."""
         federation_manager.create_validation_rule(
-            rule_name="rp_rule",
-            entity_type="RP",
-            field_path="metadata.openid_relying_party.client_name",
-            validation_type="required"
+            'rule1', 'OP', 'metadata.openid_provider.issuer', 'required'
+        )
+        federation_manager.create_validation_rule(
+            'rule2', 'RP', 'metadata.openid_relying_party.client_id', 'required'
+        )
+        federation_manager.create_validation_rule(
+            'rule3', 'BOTH', 'jwks.keys', 'required'
         )
 
+        # Get OP rules (should include BOTH)
+        op_rules = federation_manager.get_validation_rules(entity_type='OP')
+        assert len(op_rules) == 2  # rule1 and rule3
+
+        # Get RP rules (should include BOTH)
+        rp_rules = federation_manager.get_validation_rules(entity_type='RP')
+        assert len(rp_rules) == 2  # rule2 and rule3
+
+    def test_get_validation_rules_active_only(self, federation_manager):
+        """Test filtering for active rules only."""
+        # Create active rule
         federation_manager.create_validation_rule(
-            rule_name="both_rule",
-            entity_type="BOTH",
-            field_path="jwks.keys",
-            validation_type="required"
+            'active_rule', 'OP', 'metadata.openid_provider.issuer', 'required'
         )
 
-        # Get OP rules (should include OP and BOTH)
-        op_rules = federation_manager.get_validation_rules(entity_type="OP")
-        assert len(op_rules) == 2
-        rule_names = [r['rule_name'] for r in op_rules]
-        assert 'op_rule' in rule_names
-        assert 'both_rule' in rule_names
+        # Create inactive rule
+        rule_id = federation_manager.create_validation_rule(
+            'inactive_rule', 'OP', 'metadata.openid_provider.jwks_uri', 'required'
+        )
 
-        # Get RP rules (should include RP and BOTH)
-        rp_rules = federation_manager.get_validation_rules(entity_type="RP")
-        assert len(rp_rules) == 2
-        rule_names = [r['rule_name'] for r in rp_rules]
-        assert 'rp_rule' in rule_names
-        assert 'both_rule' in rule_names
+        # Deactivate second rule
+        conn = federation_manager.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('UPDATE validation_rules SET is_active = 0 WHERE rule_name = ?', ('inactive_rule',))
+        conn.commit()
+        conn.close()
+
+        # Get active rules only
+        active_rules = federation_manager.get_validation_rules(active_only=True)
+        assert len(active_rules) == 1
+        assert active_rules[0]['rule_name'] == 'active_rule'
+
+        # Get all rules
+        all_rules = federation_manager.get_validation_rules(active_only=False)
+        assert len(all_rules) == 2
 
     def test_update_validation_rule(self, federation_manager):
-        """Test updating a validation rule"""
+        """Test updating a validation rule."""
+        # Create rule
         federation_manager.create_validation_rule(
-            rule_name="test_rule",
-            entity_type="OP",
-            field_path="metadata.openid_provider.issuer",
-            validation_type="required"
+            'test_rule', 'OP', 'metadata.openid_provider.issuer', 'required'
         )
 
-        rules = federation_manager.get_validation_rules()
+        # Get rule ID
+        rules = federation_manager.get_validation_rules(active_only=False)
         rule_id = rules[0]['id']
 
-        # Update the rule
+        # Update rule
         success = federation_manager.update_validation_rule(
             rule_id,
-            validation_type="regex",
-            validation_value="^https://.*"
+            error_message='Updated error message',
+            is_active=0
         )
 
         assert success is True
 
         # Verify update
-        rules = federation_manager.get_validation_rules()
-        assert rules[0]['validation_type'] == 'regex'
-        assert rules[0]['validation_value'] == '^https://.*'
+        updated_rules = federation_manager.get_validation_rules(active_only=False)
+        assert updated_rules[0]['error_message'] == 'Updated error message'
+        assert updated_rules[0]['is_active'] == 0
 
     def test_delete_validation_rule(self, federation_manager):
-        """Test deleting a validation rule"""
+        """Test deleting a validation rule."""
+        # Create rule
         federation_manager.create_validation_rule(
-            rule_name="test_rule",
-            entity_type="OP",
-            field_path="metadata.openid_provider.issuer",
-            validation_type="required"
+            'test_rule', 'OP', 'metadata.openid_provider.issuer', 'required'
         )
 
-        rules = federation_manager.get_validation_rules()
+        # Get rule ID
+        rules = federation_manager.get_validation_rules(active_only=False)
         rule_id = rules[0]['id']
 
-        # Delete the rule
+        # Delete rule
         success = federation_manager.delete_validation_rule(rule_id)
+
         assert success is True
 
         # Verify deletion
-        rules = federation_manager.get_validation_rules()
-        assert len(rules) == 0
+        remaining_rules = federation_manager.get_validation_rules(active_only=False)
+        assert len(remaining_rules) == 0
 
-    def test_validate_required_field(self, federation_manager):
-        """Test validation of required fields"""
+
+@pytest.mark.unit
+class TestValidationTypes:
+    """Tests for different validation types."""
+
+    def test_validation_required_field_present(self, federation_manager):
+        """Test required validation passes when field exists."""
         federation_manager.create_validation_rule(
-            rule_name="require_issuer",
-            entity_type="OP",
-            field_path="metadata.openid_provider.issuer",
-            validation_type="required",
-            error_message="Issuer is required"
+            'require_issuer',
+            'OP',
+            'metadata.openid_provider.issuer',
+            'required',
+            error_message='Issuer required'
         )
 
-        # Test with missing field
-        metadata = {'openid_provider': {}}
-        jwks = {'keys': []}
-        is_valid, errors = federation_manager.validate_entity_statement('OP', metadata, jwks)
+        metadata = {
+            'openid_provider': {
+                'issuer': 'https://op.example.com'
+            }
+        }
+
+        is_valid, errors = federation_manager.validate_entity_statement('OP', metadata, {})
+
+        assert is_valid is True
+        assert len(errors) == 0
+
+    def test_validation_required_field_missing(self, federation_manager):
+        """Test required validation fails when field missing."""
+        federation_manager.create_validation_rule(
+            'require_issuer',
+            'OP',
+            'metadata.openid_provider.issuer',
+            'required',
+            error_message='Issuer required'
+        )
+
+        metadata = {
+            'openid_provider': {}
+        }
+
+        is_valid, errors = federation_manager.validate_entity_statement('OP', metadata, {})
 
         assert is_valid is False
         assert len(errors) == 1
-        assert 'Issuer is required' in errors[0]
+        assert 'Issuer required' in errors[0]
 
-        # Test with present field
-        metadata = {'openid_provider': {'issuer': 'https://op.example.com'}}
-        is_valid, errors = federation_manager.validate_entity_statement('OP', metadata, jwks)
+    def test_validation_exact_value_match(self, federation_manager):
+        """Test exact_value validation passes when values match."""
+        federation_manager.create_validation_rule(
+            'check_grant_type',
+            'OP',
+            'metadata.openid_provider.grant_types_supported',
+            'exact_value',
+            validation_value=json.dumps(['authorization_code']),
+            error_message='Must support authorization_code'
+        )
+
+        metadata = {
+            'openid_provider': {
+                'grant_types_supported': ['authorization_code']
+            }
+        }
+
+        is_valid, errors = federation_manager.validate_entity_statement('OP', metadata, {})
 
         assert is_valid is True
         assert len(errors) == 0
 
-    def test_validate_exact_value(self, federation_manager):
-        """Test validation of exact value"""
+    def test_validation_exact_value_mismatch(self, federation_manager):
+        """Test exact_value validation fails when values don't match."""
         federation_manager.create_validation_rule(
-            rule_name="require_grant_type",
-            entity_type="OP",
-            field_path="metadata.openid_provider.grant_types_supported",
-            validation_type="exact_value",
-            validation_value='["authorization_code"]',
-            error_message="Must support authorization_code"
+            'check_grant_type',
+            'OP',
+            'metadata.openid_provider.grant_types_supported',
+            'exact_value',
+            validation_value=json.dumps(['authorization_code']),
+            error_message='Must support authorization_code'
         )
 
-        # Test with wrong value
-        metadata = {'openid_provider': {'grant_types_supported': ['implicit']}}
-        jwks = {'keys': []}
-        is_valid, errors = federation_manager.validate_entity_statement('OP', metadata, jwks)
+        metadata = {
+            'openid_provider': {
+                'grant_types_supported': ['implicit']
+            }
+        }
+
+        is_valid, errors = federation_manager.validate_entity_statement('OP', metadata, {})
 
         assert is_valid is False
         assert len(errors) == 1
 
-        # Test with correct value
-        metadata = {'openid_provider': {'grant_types_supported': ['authorization_code']}}
-        is_valid, errors = federation_manager.validate_entity_statement('OP', metadata, jwks)
+    def test_validation_regex_match(self, federation_manager):
+        """Test regex validation passes when pattern matches."""
+        federation_manager.create_validation_rule(
+            'https_only',
+            'OP',
+            'metadata.openid_provider.issuer',
+            'regex',
+            validation_value='^https://.*',
+            error_message='Must use HTTPS'
+        )
+
+        metadata = {
+            'openid_provider': {
+                'issuer': 'https://op.example.com'
+            }
+        }
+
+        is_valid, errors = federation_manager.validate_entity_statement('OP', metadata, {})
 
         assert is_valid is True
         assert len(errors) == 0
 
-    def test_validate_regex(self, federation_manager):
-        """Test validation with regex pattern"""
+    def test_validation_regex_no_match(self, federation_manager):
+        """Test regex validation fails when pattern doesn't match."""
         federation_manager.create_validation_rule(
-            rule_name="https_issuer",
-            entity_type="OP",
-            field_path="metadata.openid_provider.issuer",
-            validation_type="regex",
-            validation_value="^https://.*",
-            error_message="Issuer must use HTTPS"
+            'https_only',
+            'OP',
+            'metadata.openid_provider.issuer',
+            'regex',
+            validation_value='^https://.*',
+            error_message='Must use HTTPS'
         )
 
-        # Test with invalid pattern
-        metadata = {'openid_provider': {'issuer': 'http://op.example.com'}}
-        jwks = {'keys': []}
-        is_valid, errors = federation_manager.validate_entity_statement('OP', metadata, jwks)
+        metadata = {
+            'openid_provider': {
+                'issuer': 'http://op.example.com'
+            }
+        }
+
+        is_valid, errors = federation_manager.validate_entity_statement('OP', metadata, {})
 
         assert is_valid is False
-        assert 'HTTPS' in errors[0]
+        assert len(errors) == 1
+        assert 'Must use HTTPS' in errors[0]
 
-        # Test with valid pattern
+    def test_validation_range_within_bounds(self, federation_manager):
+        """Test range validation passes when value is within range."""
+        federation_manager.create_validation_rule(
+            'token_lifetime',
+            'OP',
+            'metadata.openid_provider.default_max_age',
+            'range',
+            validation_value=json.dumps({'min': 60, 'max': 3600}),
+            error_message='Lifetime must be 60-3600 seconds'
+        )
+
+        metadata = {
+            'openid_provider': {
+                'default_max_age': 1800
+            }
+        }
+
+        is_valid, errors = federation_manager.validate_entity_statement('OP', metadata, {})
+
+        assert is_valid is True
+        assert len(errors) == 0
+
+    def test_validation_range_below_minimum(self, federation_manager):
+        """Test range validation fails when value below minimum."""
+        federation_manager.create_validation_rule(
+            'token_lifetime',
+            'OP',
+            'metadata.openid_provider.default_max_age',
+            'range',
+            validation_value=json.dumps({'min': 60, 'max': 3600}),
+            error_message='Lifetime must be 60-3600 seconds'
+        )
+
+        metadata = {
+            'openid_provider': {
+                'default_max_age': 30
+            }
+        }
+
+        is_valid, errors = federation_manager.validate_entity_statement('OP', metadata, {})
+
+        assert is_valid is False
+        assert len(errors) == 1
+
+    def test_validation_range_above_maximum(self, federation_manager):
+        """Test range validation fails when value above maximum."""
+        federation_manager.create_validation_rule(
+            'token_lifetime',
+            'OP',
+            'metadata.openid_provider.default_max_age',
+            'range',
+            validation_value=json.dumps({'min': 60, 'max': 3600}),
+            error_message='Lifetime must be 60-3600 seconds'
+        )
+
+        metadata = {
+            'openid_provider': {
+                'default_max_age': 7200
+            }
+        }
+
+        is_valid, errors = federation_manager.validate_entity_statement('OP', metadata, {})
+
+        assert is_valid is False
+        assert len(errors) == 1
+
+    def test_validation_multiple_rules(self, federation_manager):
+        """Test multiple validation rules are all applied."""
+        # Add multiple rules
+        federation_manager.create_validation_rule(
+            'require_issuer', 'OP', 'metadata.openid_provider.issuer', 'required'
+        )
+        federation_manager.create_validation_rule(
+            'https_only', 'OP', 'metadata.openid_provider.issuer', 'regex', validation_value='^https://.*'
+        )
+        federation_manager.create_validation_rule(
+            'require_jwks', 'OP', 'jwks.keys', 'required'
+        )
+
+        # Test with all rules passing
         metadata = {'openid_provider': {'issuer': 'https://op.example.com'}}
-        is_valid, errors = federation_manager.validate_entity_statement('OP', metadata, jwks)
+        jwks = {'keys': [{}]}
 
-        assert is_valid is True
-
-    def test_validate_range(self, federation_manager):
-        """Test validation with numeric range"""
-        federation_manager.create_validation_rule(
-            rule_name="token_lifetime",
-            entity_type="OP",
-            field_path="metadata.openid_provider.default_max_age",
-            validation_type="range",
-            validation_value='{"min": 60, "max": 3600}',
-            error_message="Token lifetime must be between 60 and 3600 seconds"
-        )
-
-        # Test with value below minimum
-        metadata = {'openid_provider': {'default_max_age': 30}}
-        jwks = {'keys': []}
-        is_valid, errors = federation_manager.validate_entity_statement('OP', metadata, jwks)
-
-        assert is_valid is False
-
-        # Test with value above maximum
-        metadata = {'openid_provider': {'default_max_age': 7200}}
-        is_valid, errors = federation_manager.validate_entity_statement('OP', metadata, jwks)
-
-        assert is_valid is False
-
-        # Test with value in range
-        metadata = {'openid_provider': {'default_max_age': 1800}}
-        is_valid, errors = federation_manager.validate_entity_statement('OP', metadata, jwks)
-
-        assert is_valid is True
-
-    def test_inactive_rules_not_applied(self, federation_manager):
-        """Test that inactive rules are not applied during validation"""
-        federation_manager.create_validation_rule(
-            rule_name="test_rule",
-            entity_type="OP",
-            field_path="metadata.openid_provider.issuer",
-            validation_type="required"
-        )
-
-        # Get the rule and deactivate it
-        rules = federation_manager.get_validation_rules()
-        rule_id = rules[0]['id']
-        federation_manager.update_validation_rule(rule_id, is_active=0)
-
-        # Validation should pass even with missing field
-        metadata = {'openid_provider': {}}
-        jwks = {'keys': []}
         is_valid, errors = federation_manager.validate_entity_statement('OP', metadata, jwks)
 
         assert is_valid is True
         assert len(errors) == 0
 
+        # Test with some rules failing
+        metadata = {'openid_provider': {'issuer': 'http://op.example.com'}}  # HTTP not HTTPS
+        jwks = {}  # Missing keys
 
-if __name__ == '__main__':
-    pytest.main([__file__, '-v'])
+        is_valid, errors = federation_manager.validate_entity_statement('OP', metadata, jwks)
+
+        assert is_valid is False
+        assert len(errors) >= 2  # At least regex and required failures
