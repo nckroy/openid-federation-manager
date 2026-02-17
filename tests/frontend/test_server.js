@@ -165,9 +165,10 @@ describe('Frontend Server', function() {
     describe('GET /entity/:entityId', function() {
         it('should return entity details', function(done) {
             const entityId = 'https://test.example.com';
+            const encodedEntityId = encodeURIComponent(entityId);
 
             nock(API_URL)
-                .get('/entity/' + entityId)
+                .get('/entity/' + encodedEntityId)
                 .reply(200, {
                     entity_id: entityId,
                     entity_type: 'OP',
@@ -189,12 +190,15 @@ describe('Frontend Server', function() {
         });
 
         it('should handle entity not found', function(done) {
+            const entityId = 'https://notfound.example.com';
+            const encodedEntityId = encodeURIComponent(entityId);
+
             nock(API_URL)
-                .get('/entity/https://notfound.example.com')
+                .get('/entity/' + encodedEntityId)
                 .reply(404, { error: 'Entity not found' });
 
             chai.request(app)
-                .get('/entity/https://notfound.example.com')
+                .get('/entity/' + entityId)
                 .end(function(err, res) {
                     expect(res).to.have.status(200);
                     expect(res.text).to.include('Unable to fetch entity');
